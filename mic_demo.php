@@ -285,7 +285,6 @@
                 if (timerElement) {
                     timerElement.textContent = `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
                 }
-
                 if (timeLeft <= 0) {
                     autoDisconnect();
                 } else {
@@ -546,41 +545,95 @@
         }
 
         function disconnect() {
-            console.log('🔄 Người dùng yêu cầu ngắt kết nối');
+            // 1. Dừng cuộc gọi hiện tại
             if (app.currentCall) {
                 app.currentCall.close();
+                app.currentCall = null;
             }
+
+            // 2. Hủy hoàn toàn kết nối PeerJS (để không còn giữ kết nối ngầm)
+            if (app.peer) {
+                app.peer.destroy(); // Quan trọng: Hủy peer ID hiện tại
+                app.peer = null;
+            }
+
+            // 3. Tắt Micro (Quan trọng: Duyệt qua tất cả các track và stop)
             if (app.localStream) {
-                app.localStream.getTracks().forEach(track => track.stop());
+                app.localStream.getTracks().forEach(track => {
+                    track.stop(); // Dừng thu âm
+                    track.enabled = false; // Tắt tín hiệu
+                });
                 app.localStream = null;
             }
+
+            // 4. Tắt Camera (Nếu lỡ còn đang bật ở nền)
+            if (app.qrVideo && app.qrVideo.srcObject) {
+                app.qrVideo.srcObject.getTracks().forEach(track => track.stop());
+                app.qrVideo.srcObject = null;
+            }
+
+            // 5. Đóng WebSocket kết nối tới Python
             if (app.ws) {
                 app.ws.close();
                 app.ws = null;
             }
-            stopAutoDisconnectTimer();
+
+            // 6. Dừng hiệu ứng sóng âm
             stopVisualizer();
+
+            // 7. Xóa tham số ID trên thanh địa chỉ URL (để khi F5 không tự kết nối lại)
+            if (window.history.replaceState) {
+                window.history.replaceState({}, document.title, window.location.pathname);
+            }
+
+            // 8. Cập nhật lại giao diện
             resetUI();
+
+            // (Tùy chọn) Nếu muốn reload trang để sạch sẽ hoàn toàn 100%:
+            // window.location.reload(); 
         }
 
         function resetUI() {
             if (isMobile) {
-                document.getElementById('sender-auto-view').classList.add('hidden');
+                // --- GIAO DIỆN ĐIỆN THOẠI ---
+
+                // Ẩn màn hình đã kết nối
                 document.getElementById('sender-connected-view').classList.add('hidden');
+                document.getElementById('sender-auto-view').classList.add('hidden');
+
+                // Hiện lại màn hình quét QR thủ công
                 document.getElementById('sender-manual-view').classList.remove('hidden');
-                document.getElementById('senderStatus').innerHTML = '';
+
+                // Reset nút bấm
+                document.getElementById('startScannerBtn').classList.remove('hidden');
+                document.getElementById('stopScannerBtn').classList.add('hidden');
+                document.getElementById('scanner-container').classList.add('hidden');
+
+                // Xóa thông báo trạng thái cũ
+                const statusEl = document.getElementById('senderStatus');
+                statusEl.textContent = '';
+                statusEl.className = '';
+
+                // Reset nút kết nối (cho lần sau)
                 const connectBtn = document.getElementById('connectBtn');
                 if (connectBtn) connectBtn.disabled = false;
-                window.history.replaceState({}, document.title, window.location.pathname);
+
             } else {
+                // --- GIAO DIỆN MÁY TÍNH ---
+
                 document.getElementById('receiver-initial-view').classList.remove('hidden');
                 document.getElementById('receiver-connected-view').classList.add('hidden');
-                document.getElementById('receiverStatus').innerHTML = '';
+                document.getElementById('receiverStatus').textContent = '';
+                document.getElementById('receiverStatus').className = '';
+
                 const remoteAudio = document.getElementById('remoteAudio');
                 if (remoteAudio.srcObject) {
                     remoteAudio.srcObject.getTracks().forEach(track => track.stop());
                     remoteAudio.srcObject = null;
                 }
+
+                // Khởi tạo lại mã QR mới trên PC để sẵn sàng cho kết nối mới
+                initializeReceiver();
             }
         }
 
