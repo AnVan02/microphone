@@ -159,10 +159,6 @@
     }
 
     /* hình  */
-
-
-
-
     nav a {
         color: #fff;
         text-decoration: none;

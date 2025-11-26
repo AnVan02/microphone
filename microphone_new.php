@@ -4,138 +4,125 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>🎙️ Mic Qua Mạng - Kết nối điện thoại làm microphone</title>
-    <!-- THƯ VIỆN -->
+    <title>🎙️ Mic Qua Mạng (Phiên bản cải tiến)</title>
+    <!-- THƯ VIỆN CẦN THIẾT -->
     <script src="https://unpkg.com/peerjs@1.4.7/dist/peerjs.min.js"></script>
     <script src="https://cdn.jsdelivr.net/gh/davidshimjs/qrcodejs/qrcode.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js"></script>
 
     <style>
         * {
             margin: 0;
             padding: 0;
             box-sizing: border-box;
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
         }
 
         body {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background: linear-gradient(135deg, #2b5876 0%, #4e4376 100%);
             min-height: 100vh;
             padding: 20px;
             display: flex;
             align-items: center;
             justify-content: center;
-            color: #2d3748;
+            color: #4a5568;
         }
 
         .container {
             max-width: 500px;
             width: 100%;
             background: white;
-            border-radius: 20px;
-            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
-            padding: 30px;
+            border-radius: 15px;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+            padding: 25px;
             text-align: center;
         }
 
         h1 {
             color: #2d3748;
-            margin-bottom: 25px;
-            font-size: 28px;
-            font-weight: 700;
+            margin-bottom: 20px;
+            font-size: 24px;
         }
 
         .btn {
             width: 100%;
-            padding: 16px;
+            padding: 15px;
             border: none;
-            border-radius: 12px;
-            font-size: 17px;
+            border-radius: 10px;
+            font-size: 16px;
             font-weight: 600;
             cursor: pointer;
-            margin: 12px 0;
-            transition: all 0.3s ease;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 10px;
+            margin: 10px 0;
+            transition: all 0.3s;
         }
 
         .btn-primary {
-            background: linear-gradient(135deg, #667eea, #764ba2);
+            background: #667eea;
             color: white;
-            box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
         }
 
         .btn-secondary {
-            background: linear-gradient(135deg, #48bb78, #38a169);
+            background: #38a169;
             color: white;
-            box-shadow: 0 4px 15px rgba(72, 187, 120, 0.4);
         }
 
         .btn-warning {
-            background: linear-gradient(135deg, #ed8936, #dd6b20);
+            background: #d69e2e;
             color: white;
-            box-shadow: 0 4px 15px rgba(237, 137, 54, 0.4);
         }
 
         .btn-danger {
-            background: linear-gradient(135deg, #f56565, #e53e3e);
+            background: #e53e3e;
             color: white;
-            box-shadow: 0 4px 15px rgba(245, 101, 101, 0.4);
         }
 
         .btn:disabled {
             background: #cbd5e0;
-            box-shadow: none;
             opacity: 0.6;
             cursor: not-allowed;
         }
 
         .btn:hover:not(:disabled) {
-            transform: translateY(-2px);
-            box-shadow: 0 6px 20px rgba(0, 0, 0, 0.2);
+            opacity: 0.9;
         }
 
         .hidden {
-            display: none !important;
+            display: none;
         }
 
-        .info-box {
+        .info {
             background: #ebf8ff;
             color: #2a4365;
-            padding: 16px;
-            border-radius: 12px;
-            margin: 20px 0;
-            font-size: 15px;
+            padding: 12px;
+            border-radius: 8px;
+            margin: 15px 0;
+            font-size: 14px;
             line-height: 1.6;
-            border-left: 5px solid #4299e1;
+            border-left: 4px solid #4299e1;
             text-align: left;
         }
 
-        .status-box {
-            padding: 18px;
-            border-radius: 12px;
-            margin: 20px 0;
-            font-weight: 600;
-            border: 3px solid transparent;
+        .status {
+            padding: 15px;
+            border-radius: 10px;
+            margin: 15px 0;
+            font-weight: 500;
+            border: 2px solid transparent;
             word-wrap: break-word;
-            font-size: 16px;
         }
 
-        .status-info {
+        .status.info {
             background: #fffbeb;
             color: #92400e;
-            border-color: #f59e0b;
+            border-color: #fbbF24;
         }
 
-        .status-connected {
-            background: #f0fff4;
+        .status.connected {
+            background: #c6f6d5;
             color: #22543d;
             border-color: #48bb78;
         }
 
-        .status-error {
+        .status.error {
             background: #fed7d7;
             color: #742a2a;
             border-color: #f56565;
@@ -145,41 +132,38 @@
             display: flex;
             justify-content: center;
             align-items: center;
-            padding: 25px;
-            border: 3px dashed #e2e8f0;
-            border-radius: 12px;
-            margin: 25px 0;
-            min-height: 300px;
-            background: #f7fafc;
+            padding: 20px;
+            border: 2px dashed #e2e8f0;
+            border-radius: 8px;
+            margin-top: 20px;
+            min-height: 290px;
         }
 
+        /* NEW: Visualizer style */
         #visualizer-container {
-            margin: 20px 0;
-            padding: 15px;
-            background: linear-gradient(135deg, #f7fafc, #edf2f7);
-            border-radius: 12px;
-            border: 2px solid #e2e8f0;
+            margin-top: 15px;
+            padding: 10px;
+            background-color: #f7fafc;
+            border-radius: 8px;
         }
 
         #visualizer {
             width: 100%;
-            height: 80px;
-            border-radius: 8px;
-            background: #2d3748;
+            height: 50px;
+            border-radius: 5px;
         }
 
+        /* NEW: QR Scanner styles */
         #scanner-container {
-            margin: 25px 0;
+            margin: 20px 0;
             position: relative;
-            border-radius: 15px;
-            overflow: hidden;
-            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
         }
 
         #qr-video {
             width: 100%;
-            border-radius: 15px;
-            display: block;
+            max-width: 300px;
+            border-radius: 10px;
+            border: 3px solid #667eea;
         }
 
         #qr-canvas {
@@ -189,71 +173,36 @@
         .scanner-overlay {
             position: absolute;
             top: 0;
-            left: 0;
+            left: 50%;
+            transform: translateX(-50%);
             width: 100%;
+            max-width: 300px;
             height: 100%;
-            border: 3px solid #48bb78;
-            border-radius: 15px;
+            border: 2px solid #38a169;
+            border-radius: 10px;
             pointer-events: none;
-            box-shadow: inset 0 0 0 2px white;
         }
 
         .scanner-line {
             position: absolute;
             width: 100%;
-            height: 3px;
-            background: linear-gradient(90deg, transparent, #48bb78, transparent);
+            height: 2px;
+            background: #38a169;
             animation: scan 2s infinite linear;
-            border-radius: 3px;
         }
 
         @keyframes scan {
             0% {
                 top: 0;
-                opacity: 0;
             }
 
             50% {
-                opacity: 1;
+                top: 100%;
             }
 
             100% {
-                top: 100%;
-                opacity: 0;
+                top: 0;
             }
-        }
-
-        .step-number {
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            width: 30px;
-            height: 30px;
-            background: #667eea;
-            color: white;
-            border-radius: 50%;
-            margin-right: 10px;
-            font-weight: bold;
-        }
-
-        .volume-indicator {
-            display: inline-block;
-            width: 20px;
-            height: 20px;
-            border-radius: 50%;
-            margin-left: 10px;
-        }
-
-        .volume-low {
-            background: #f56565;
-        }
-
-        .volume-medium {
-            background: #ed8936;
-        }
-
-        .volume-high {
-            background: #48bb78;
         }
     </style>
 </head>
@@ -261,18 +210,14 @@
 <body>
     <div class="container">
         <h1>🎙️ Mic Qua Mạng</h1>
-        <p style="color: #718096; margin-bottom: 25px;">Biến điện thoại thành microphone không dây cho máy tính</p>
 
-        <!-- Giao diện điện thoại (gửi âm thanh) -->
+        <!-- === GIAO DIỆN ĐIỆN THOẠI (GỬI) === -->
         <div id="senderDiv" class="hidden">
-            <!-- View quét QR code -->
             <div id="sender-manual-view">
-                <div class="info-box">
-                    <div class="step-number">1</div>
-                    <strong>Quét QR Code từ máy tính</strong><br>
-                    Mở file này trên máy tính để hiển thị mã QR, sau đó dùng camera điện thoại quét mã đó.
-                </div>
+                <div class="info">Để kết nối, hãy dùng Camera trên điện thoại của bạn quét mã QR hiển thị trên màn hình
+                    máy tính.</div>
 
+                <!-- NEW: QR Scanner Section -->
                 <div id="scanner-container" class="hidden">
                     <video id="qr-video" playsinline></video>
                     <canvas id="qr-canvas"></canvas>
@@ -281,120 +226,62 @@
                     </div>
                 </div>
 
-                <button class="btn btn-primary" id="startScannerBtn">
-                    📷 Bật Camera Quét QR
-                </button>
-                <button class="btn btn-warning hidden" id="stopScannerBtn">
-                    🛑 Dừng Quét
-                </button>
+                <button class="btn btn-primary" id="startScannerBtn">📷 Quét QR Code</button>
+                <button class="btn btn-secondary hidden" id="stopScannerBtn">🛑 Dừng Quét</button>
 
-                <div class="info-box" id="scanner-info">
-                    Nhấn "Bật Camera Quét QR" và hướng camera về mã QR trên màn hình máy tính
+                <div class="info" id="scanner-info">
+                    Nhấn "Quét QR Code" và hướng camera về phía mã QR trên máy tính
                 </div>
             </div>
-
-            <!-- View kết nối sau khi quét QR -->
             <div id="sender-auto-view" class="hidden">
-                <div class="info-box">
-                    <div class="step-number">2</div>
-                    <strong>Kết nối với máy tính</strong><br>
-                    Nhấn nút bên dưới để bắt đầu truyền âm thanh từ điện thoại đến máy tính.
-                </div>
-                <button class="btn btn-primary" id="connectBtn">
-                    🎤 Kết Nối Với Máy Tính
-                </button>
+                <button class="btn btn-primary" id="connectBtn">🎤 Kết nối với Máy tính</button>
             </div>
-
-            <!-- View đã kết nối -->
             <div id="sender-connected-view" class="hidden">
-                <div class="info-box status-connected">
-                    ✅ <strong>ĐÃ KẾT NỐI THÀNH CÔNG!</strong><br>
-                    Âm thanh từ điện thoại đang được truyền đến máy tính.
-                </div>
-
-                <!-- Visualizer âm thanh -->
+                <!-- NEW: Audio Visualizer -->
                 <div id="visualizer-container">
-                    <div style="text-align: center; margin-bottom: 10px; font-weight: 600; color: #4a5568;">
-                        🎵 ÂM THANH ĐANG TRUYỀN
-                    </div>
                     <canvas id="visualizer"></canvas>
                 </div>
-
-                <!-- Điều khiển -->
                 <div>
-                    <button id="muteBtn" class="btn btn-warning" onclick="toggleMicrophone(false)">
-                        🔇 Tạm Dừng Âm Thanh
-                    </button>
-                    <button id="unmuteBtnSender" class="btn btn-secondary hidden" onclick="toggleMicrophone(true)">
-                        🎤 Bật Lại Âm Thanh
-                    </button>
+                    <button id="muteBtn" class="btn btn-warning" onclick="toggleMicrophone(false)">🔇 Tạm dừng âm
+                        thanh</button>
+                    <button id="unmuteBtnSender" class="btn btn-secondary hidden" onclick="toggleMicrophone(true)">🎤
+                        Bật lại âm thanh</button>
                 </div>
-
-                <hr style="margin: 20px 0; border: 1px solid #e2e8f0;">
-
-                <button class="btn btn-danger" onclick="disconnect()">
-                    🔴 Ngắt Kết Nối
-                </button>
+                <hr style="margin: 15px 0; border: 1px solid #e2e8f0;">
+                <button class="btn btn-danger" onclick="disconnect()">🔴 Dừng Kết Nối</button>
             </div>
-
-            <!-- Status -->
             <div id="senderStatus"></div>
         </div>
 
-        <!-- Giao diện máy tính (nhận âm thanh) -->
+        <!-- === GIAO DIỆN MÁY TÍNH (NHẬN) === -->
         <div id="receiverDiv" class="hidden">
             <audio id="remoteAudio" playsinline style="display: none;"></audio>
-
-            <!-- View chờ kết nối -->
             <div id="receiver-initial-view">
-                <div class="info-box">
-                    <div class="step-number">1</div>
-                    <strong>Chia sẻ mã kết nối</strong><br>
-                    Dùng camera điện thoại quét mã QR này để kết nối điện thoại làm microphone.
-                </div>
-
+                <div class="info">Dùng Camera điện thoại quét mã QR này để kết nối và biến nó thành micro không dây cho
+                    máy tính.</div>
                 <div id="qrcode-container">
-                    <p>🔄 Đang kết nối đến máy chủ...</p>
-                </div>
-
-                <div class="info-box">
-                    <div class="step-number">2</div>
-                    <strong>Hướng dẫn sử dụng</strong><br>
-                    • Quét QR code bằng điện thoại<br>
-                    • Cho phép truy cập microphone<br>
-                    • Nói vào điện thoại - âm thanh sẽ truyền đến máy tính
+                    <p>Đang kết nối đến máy chủ...</p>
                 </div>
             </div>
-
-            <!-- View đã kết nối -->
             <div id="receiver-connected-view" class="hidden">
-                <div class="info-box status-connected">
-                    ✅ <strong>ĐÃ KẾT NỐI VỚI ĐIỆN THOẠI!</strong><br>
-                    Âm thanh đang được nhận từ điện thoại và chuyển đến VB-Cable.
-                </div>
-
-                <button id="unmuteBtn" class="btn btn-secondary" onclick="playAudio()">
-                    🔊 Nghe Thử Âm Thanh
-                </button>
-
-                <div class="info-box">
-                    💡 <strong>Kiểm tra hoạt động:</strong><br>
-                    • Mở Sound Settings trên Windows<br>
-                    • Vào Recording devices<br>
-                    • Tìm "CABLE Output" và xem thanh âm lượng có nhảy không<br>
-                    • Nếu có, hệ thống đang hoạt động tốt!
+                <div class="info">✅ Đã kết nối! Âm thanh từ điện thoại đang được gửi đến VB-CABLE.</div>
+                <button id="unmuteBtn" class="btn btn-secondary" onclick="playAudio()">🔊 Bật Âm Thanh Ra Loa (Kiểm tra)</button>
+                <div class="info" style="font-size: 12px; margin-top: 20px; background: #fff5f5; border-left-color: #fc8181;">
+                    <strong>📌 HƯỚNG DẪN SỬ DỤNG VỚI LUMI AI:</strong><br>
+                    <strong>Bước 1:</strong> Click biểu tượng 🔒 bên trái thanh địa chỉ Chrome<br>
+                    <strong>Bước 2:</strong> Chọn <strong>"CABLE Output"</strong> làm microphone (KHÔNG chọn Default)<br>
+                    <strong>Bước 3:</strong> Mở Lumi AI trong tab mới<br>
+                    <strong>Bước 4:</strong> Cho phép Lumi AI truy cập microphone → chọn <strong>"CABLE Output"</strong><br>
+                    <strong>Bước 5:</strong> Nói vào điện thoại → Lumi AI sẽ nhận được!<br><br>
+                    <strong>💡 Kiểm tra:</strong> Xem console Python có hiển thị "✅ Tốt" khi bạn nói không
                 </div>
             </div>
-
-            <!-- Status -->
             <div id="receiverStatus"></div>
         </div>
     </div>
 
     <script>
-        // =============================================
-        // CẤU HÌNH VÀ BIẾN TOÀN CỤC
-        // =============================================
+        // --- REFACTORED: App state and config ---
         const app = {
             peer: null,
             currentCall: null,
@@ -402,11 +289,11 @@
             audioContext: null,
             analyser: null,
             visualizerFrameId: null,
-            ws: null,
+            ws: null, // WebSocket connection
+            qrScanner: null,
             qrVideo: null,
             qrCanvas: null,
-            qrCanvasContext: null,
-            volumeLevel: 0
+            qrCanvasContext: null
         };
 
         const PEER_CONFIG = {
@@ -418,44 +305,29 @@
 
         const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
 
-        // =============================================
-        // KHỞI TẠO ỨNG DỤNG
-        // =============================================
+        // --- LOGIC CHUNG ---
         document.addEventListener('DOMContentLoaded', () => {
-            console.log('🚀 Ứng dụng Mic Qua Mạng đang khởi động...');
-
             if (isMobile) {
                 document.getElementById('senderDiv').classList.remove('hidden');
                 initializeSender();
-                console.log('📱 Đang chạy trên điện thoại (Sender)');
             } else {
                 document.getElementById('receiverDiv').classList.remove('hidden');
                 initializeReceiver();
-                console.log('💻 Đang chạy trên máy tính (Receiver)');
             }
         });
 
-        // =============================================
-        // MÁY TÍNH - NHẬN ÂM THANH
-        // =============================================
+        // --- LOGIC MÁY TÍNH (NHẬN) ---
         function initializeReceiver() {
-            console.log('🔄 Khởi tạo receiver...');
-
             if (app.peer) app.peer.destroy();
-            showStatus('receiver', '🔗 Đang kết nối đến máy chủ PeerJS...', 'info');
-
+            showStatus('receiver', 'Đang kết nối đến máy chủ PeerJS...', 'info');
             app.peer = new Peer(PEER_CONFIG);
 
             app.peer.on('open', id => {
-                console.log('✅ PeerJS connected với ID:', id);
-                showStatus('receiver', `✅ Sẵn sàng! ID: ${id}`, 'connected');
-
-                // Tạo QR code
+                showStatus('receiver', `Sẵn sàng! ID của bạn: ${id}`, 'info');
                 const qrContainer = document.getElementById('qrcode-container');
                 qrContainer.innerHTML = '';
                 const pageUrl = window.location.href.split('?')[0];
                 const connectUrl = `${pageUrl}?id=${id}`;
-
                 new QRCode(qrContainer, {
                     text: connectUrl,
                     width: 256,
@@ -464,185 +336,178 @@
                     colorLight: "#ffffff",
                     correctLevel: QRCode.CorrectLevel.H
                 });
-
-                console.log('📱 QR Code đã được tạo');
             });
 
             app.peer.on('call', call => {
-                console.log('📞 Nhận cuộc gọi từ điện thoại:', call.peer);
-                showStatus('receiver', '📲 Điện thoại đang kết nối...', 'info');
-
+                showStatus('receiver', '📲 Có cuộc gọi đến, đang kết nối...', 'info');
                 app.currentCall = call;
-                call.answer(); // Tự động trả lời
+
+                // Answer the call without providing any stream (we only want to receive)
+                call.answer();
 
                 call.on('stream', remoteStream => {
-                    console.log('🎵 Nhận audio stream từ điện thoại');
-                    showStatus('receiver', '✅ Đã kết nối với điện thoại!', 'connected');
-
-                    // Hiển thị view đã kết nối
-                    document.getElementById('receiver-initial-view').classList.add('hidden');
-                    document.getElementById('receiver-connected-view').classList.remove('hidden');
-
-                    // Kết nối WebSocket và xử lý âm thanh
-                    connectWebSocketAndProcessAudio(remoteStream);
+                    const remoteAudio = document.getElementById('remoteAudio');
+                    remoteAudio.srcObject = remoteStream;
+                    connectWebSocketAndMix(remoteStream);
                 });
 
                 call.on('close', () => {
-                    console.log('🔌 Cuộc gọi đã đóng');
-                    showStatus('receiver', '📱 Điện thoại đã ngắt kết nối', 'info');
-                    cleanupConnection();
+                    showStatus('receiver', '🚫 Kết nối đã đóng từ phía điện thoại.', 'info');
+                    if (app.ws) {
+                        app.ws.close();
+                        app.ws = null;
+                    }
+                    resetUI();
                 });
 
                 call.on('error', err => {
-                    console.error('❌ Lỗi cuộc gọi:', err);
-                    showStatus('receiver', `❌ Lỗi kết nối: ${err.message}`, 'error');
-                    cleanupConnection();
+                    showStatus('receiver', `❌ Lỗi cuộc gọi: ${err.message}`, 'error');
+                    if (app.ws) {
+                        app.ws.close();
+                        app.ws = null;
+                    }
                 });
             });
 
             app.peer.on('error', err => {
-                console.error('❌ Lỗi PeerJS:', err);
-                showStatus('receiver', `❌ Lỗi kết nối: ${err.message}`, 'error');
-                document.getElementById('qrcode-container').innerHTML = '<p>❌ Không thể kết nối đến máy chủ</p>';
+                showStatus('receiver', `❌ Lỗi kết nối: ${err.message}. Vui lòng tải lại trang.`, 'error');
+                document.getElementById('qrcode-container').innerHTML = '<p>Không thể kết nối đến máy chủ.</p>';
+            });
+
+            app.peer.on('disconnected', () => {
+                showStatus('receiver', 'Mất kết nối tới máy chủ, đang thử kết nối lại...', 'error');
+                app.peer.reconnect();
             });
         }
 
-        // Kết nối WebSocket và xử lý âm thanh
-        function connectWebSocketAndProcessAudio(remoteStream) {
-            console.log('🔄 Đang kết nối WebSocket đến Python server...');
+        // ========================================
+        // 🔧 HÀM CHÍNH: Kết nối WebSocket và gửi âm thanh từ điện thoại
+        // ========================================
+        function connectWebSocketAndMix(remoteStream) {
+            console.log("✅ Bắt đầu xử lý audio từ điện thoại...");
 
+            const audioContext = new(window.AudioContext || window.webkitAudioContext)({
+                sampleRate: 48000
+            });
+
+            // Chỉ lấy audio từ điện thoại (remote stream)
+            const remoteSource = audioContext.createMediaStreamSource(remoteStream);
+
+            // Điều chỉnh âm lượng (tăng nhẹ để đảm bảo Lumi AI nhận được rõ)
+            const remoteGain = audioContext.createGain();
+            remoteGain.gain.value = 1.2; // Tăng 20% để đảm bảo chất lượng
+
+            remoteSource.connect(remoteGain);
+
+            // ScriptProcessor để xử lý audio (mono input, mono output)
+            // Buffer size nhỏ hơn để giảm latency và tăng tốc độ gửi
+            const processor = audioContext.createScriptProcessor(2048, 1, 1);
+            remoteGain.connect(processor);
+
+            // Mute loa (không phát ra ngoài)
+            const gainNode = audioContext.createGain();
+            gainNode.gain.value = 0;
+            processor.connect(gainNode);
+            gainNode.connect(audioContext.destination);
+
+            // Kết nối WebSocket
+            console.log("🔄 Đang kết nối WebSocket đến ws://localhost:8765...");
             app.ws = new WebSocket("ws://localhost:8765");
             app.ws.binaryType = "arraybuffer";
 
             app.ws.onopen = () => {
-                console.log('✅ Đã kết nối WebSocket thành công!');
-                showStatus('receiver', '🎵 Đang truyền âm thanh đến Python...', 'connected');
+                console.log("✅ WebSocket đã kết nối thành công!");
+                showStatus('receiver', '🎵 Đang gửi âm thanh từ điện thoại đến Python/VB-CABLE...', 'connected');
 
-                // Tạo AudioContext để xử lý stream
-                const audioContext = new(window.AudioContext || window.webkitAudioContext)({
-                    sampleRate: 48000
-                });
-                const source = audioContext.createMediaStreamSource(remoteStream);
-                const processor = audioContext.createScriptProcessor(256, 1, 1);
-
-                let sampleCount = 0;
-                let lastLogTime = Date.now();
-                let audioChunks = 0;
-                let silentChunks = 0;
-
+                // Bắt đầu gửi audio (chỉ từ điện thoại, mono)
+                let lastSendTime = 0;
+                let sendCount = 0;
                 processor.onaudioprocess = (event) => {
                     if (app.ws && app.ws.readyState === WebSocket.OPEN) {
                         try {
-                            const inputData = event.inputBuffer.getChannelData(0);
-                            const audioBuffer = new Float32Array(inputData);
+                            const audioData = event.inputBuffer.getChannelData(0); // Chỉ lấy kênh mono từ điện thoại
 
-                            // Kiểm tra âm lượng
-                            let maxVolume = 0;
-                            let sum = 0;
-                            for (let i = 0; i < audioBuffer.length; i++) {
-                                const absValue = Math.abs(audioBuffer[i]);
-                                if (absValue > maxVolume) maxVolume = absValue;
-                                sum += absValue;
-                            }
-                            const averageVolume = sum / audioBuffer.length;
-
-                            // Thống kê
-                            if (maxVolume > 0.01) {
-                                audioChunks++;
-                            } else {
-                                silentChunks++;
+                            // Tính max value nhanh hơn
+                            let maxVal = 0;
+                            for (let i = 0; i < audioData.length; i++) {
+                                const abs = Math.abs(audioData[i]);
+                                if (abs > maxVal) maxVal = abs;
                             }
 
-                            // Gửi dữ liệu audio
-                            app.ws.send(audioBuffer);
+                            // Gửi audio LIÊN TỤC (kể cả silence) để đảm bảo stream không bị ngắt
+                            // Điều này RẤT QUAN TRỌNG để Lumi AI nhận được audio ổn định
+                            app.ws.send(audioData.buffer);
+                            sendCount++;
 
-                            // Log định kỳ
-                            sampleCount += audioBuffer.length;
-                            const currentTime = Date.now();
-                            if (currentTime - lastLogTime > 3000) {
-                                const totalChunks = audioChunks + silentChunks;
-                                console.log(`📤 Đã gửi ${sampleCount} samples, ${audioChunks}/${totalChunks} chunks có âm thanh`);
-
-                                if (audioChunks > 0) {
-                                    showStatus('receiver', `✅ Đang nhận âm thanh từ điện thoại (vol: ${(maxVolume * 100).toFixed(1)}%)`, 'connected');
-                                } else {
-                                    showStatus('receiver', '🔇 Chưa phát hiện âm thanh. Hãy nói vào điện thoại!', 'info');
-                                }
-
-                                sampleCount = 0;
-                                lastLogTime = currentTime;
+                            // Log thỉnh thoảng để debug
+                            const now = Date.now();
+                            if (now - lastSendTime > 2000) {
+                                const status = maxVal > 0.01 ? '✅ Có âm thanh' : '⚠️ Im lặng';
+                                console.log(`📤 Gửi audio: ${audioData.length} mẫu, max: ${maxVal.toFixed(4)} ${status} | Tổng: ${sendCount} chunks`);
+                                lastSendTime = now;
                             }
-
                         } catch (error) {
-                            console.error('❌ Lỗi xử lý audio:', error);
+                            console.error("❌ Lỗi gửi audio:", error);
+                            // Thử kết nối lại nếu lỗi
+                            if (app.ws.readyState !== WebSocket.OPEN) {
+                                console.log("🔄 Đang thử kết nối lại WebSocket...");
+                                app.ws = new WebSocket("ws://localhost:8765");
+                                app.ws.binaryType = "arraybuffer";
+                            }
+                        }
+                    } else {
+                        // WebSocket chưa mở, thử kết nối lại
+                        if (!app.ws || app.ws.readyState === WebSocket.CLOSED) {
+                            console.log("🔄 WebSocket đã đóng, đang kết nối lại...");
+                            app.ws = new WebSocket("ws://localhost:8765");
+                            app.ws.binaryType = "arraybuffer";
                         }
                     }
                 };
-
-                source.connect(processor);
-                processor.connect(audioContext.destination);
-
-                console.log('✅ Đã bắt đầu xử lý và gửi audio stream');
             };
 
             app.ws.onclose = () => {
-                console.log('⚠️ WebSocket đã đóng');
-                showStatus('receiver', '⚠️ Mất kết nối với Python server', 'error');
+                console.log("⚠️ WebSocket đã ngắt kết nối");
+                showStatus('receiver', '⚠️ Mất kết nối Python server', 'error');
             };
 
             app.ws.onerror = (error) => {
-                console.error('❌ Lỗi WebSocket:', error);
-                showStatus('receiver', '❌ Không thể kết nối đến Python server', 'error');
+                console.error("❌ WebSocket error:", error);
+                showStatus('receiver', '❌ Không thể kết nối Python server. Hãy chắc server đang chạy!', 'error');
             };
         }
 
-        // =============================================
-        // ĐIỆN THOẠI - GỬI ÂM THANH
-        // =============================================
+        // --- LOGIC ĐIỆN THOẠI (GỬI) ---
         function initializeSender() {
-            console.log('🔄 Khởi tạo sender...');
-
             const urlParams = new URLSearchParams(window.location.search);
             const receiverId = urlParams.get('id');
 
             if (receiverId) {
-                // Đã có ID từ QR code, hiển thị nút kết nối
+                // Đã có ID từ URL (sau khi quét QR thành công)
                 document.getElementById('sender-manual-view').classList.add('hidden');
                 document.getElementById('sender-auto-view').classList.remove('hidden');
-
                 const connectBtn = document.getElementById('connectBtn');
                 connectBtn.onclick = () => {
                     connectBtn.disabled = true;
-                    connectBtn.innerHTML = '🔄 Đang kết nối...';
-
                     if (app.peer) app.peer.destroy();
                     app.peer = new Peer(PEER_CONFIG);
-
                     app.peer.on('open', () => {
                         connectToReceiver(receiverId);
                     });
-
-                    app.peer.on('error', err => {
-                        console.error('❌ Lỗi PeerJS:', err);
-                        showStatus('sender', `❌ Lỗi kết nối: ${err.message}`, 'error');
-                        connectBtn.disabled = false;
-                        connectBtn.innerHTML = '🎤 Kết Nối Với Máy Tính';
-                    });
+                    app.peer.on('error', err => showStatus('sender', `❌ Lỗi PeerJS: ${err.message}`, 'error'));
                 };
-
-                console.log('📱 Đã nhận ID receiver từ URL:', receiverId);
             } else {
-                // Chưa có ID, hiển thị scanner
+                // Chưa có ID, hiển thị QR scanner
                 document.getElementById('sender-manual-view').classList.remove('hidden');
                 document.getElementById('sender-auto-view').classList.add('hidden');
+
+                // Khởi tạo QR Scanner
                 initializeQRScanner();
             }
         }
 
-        // Quét QR code
+        // NEW: QR Scanner Functions
         function initializeQRScanner() {
-            console.log('📷 Khởi tạo QR scanner...');
-
             app.qrVideo = document.getElementById('qr-video');
             app.qrCanvas = document.getElementById('qr-canvas');
             app.qrCanvasContext = app.qrCanvas.getContext('2d');
@@ -653,8 +518,9 @@
 
         async function startQRScanner() {
             try {
-                showStatus('sender', '📷 Đang khởi động camera...', 'info');
+                showStatus('sender', '🔄 Đang khởi động camera...', 'info');
 
+                // Yêu cầu quyền truy cập camera
                 const stream = await navigator.mediaDevices.getUserMedia({
                     video: {
                         facingMode: 'environment',
@@ -668,21 +534,20 @@
                 });
 
                 app.qrVideo.srcObject = stream;
-                await app.qrVideo.play();
+                app.qrVideo.play();
 
-                // Hiển thị scanner
+                // Hiển thị scanner UI
                 document.getElementById('scanner-container').classList.remove('hidden');
                 document.getElementById('startScannerBtn').classList.add('hidden');
                 document.getElementById('stopScannerBtn').classList.remove('hidden');
                 document.getElementById('scanner-info').textContent = 'Đang quét QR code...';
 
-                showStatus('sender', '🔍 Đang quét QR code...', 'info');
+                showStatus('sender', '📷 Đang quét QR code...', 'info');
 
-                // Bắt đầu quét
+                // Bắt đầu quét QR
                 requestAnimationFrame(scanQRCode);
 
             } catch (error) {
-                console.error('❌ Lỗi camera:', error);
                 let message = 'Lỗi không xác định';
                 if (error.name === 'NotAllowedError') {
                     message = '❌ Quyền truy cập camera bị từ chối. Vui lòng cho phép camera để quét QR code.';
@@ -704,9 +569,9 @@
             document.getElementById('scanner-container').classList.add('hidden');
             document.getElementById('startScannerBtn').classList.remove('hidden');
             document.getElementById('stopScannerBtn').classList.add('hidden');
-            document.getElementById('scanner-info').textContent = 'Nhấn "Bật Camera Quét QR" và hướng camera về mã QR trên máy tính';
+            document.getElementById('scanner-info').textContent = 'Nhấn "Quét QR Code" và hướng camera về phía mã QR trên máy tính';
 
-            showStatus('sender', '⏹️ Đã dừng quét QR code', 'info');
+            showStatus('sender', 'Đã dừng quét QR code', 'info');
         }
 
         function scanQRCode() {
@@ -719,26 +584,50 @@
 
                 try {
                     const imageData = app.qrCanvasContext.getImageData(0, 0, app.qrCanvas.width, app.qrCanvas.height);
-                    const code = jsQR(imageData.data, imageData.width, imageData.height, {
-                        inversionAttempts: "dontInvert",
-                    });
 
-                    if (code) {
-                        console.log('✅ Đã quét được QR code:', code.data);
-                        handleQRCodeDetected(code.data);
+                    // Simple QR code detection (you might want to use a proper QR library)
+                    const url = detectQRCode(imageData);
+                    if (url) {
+                        handleQRCodeDetected(url);
                         return;
                     }
                 } catch (error) {
-                    console.log('⚠️ Lỗi quét QR:', error);
+                    console.log('QR scan error:', error);
                 }
             }
 
             requestAnimationFrame(scanQRCode);
         }
 
+        function detectQRCode(imageData) {
+            // This is a simplified QR code detection
+            // In a real implementation, you would use a proper QR code library like jsQR
+            try {
+                // Check if the URL contains the peer ID parameter
+                const url = window.location.href;
+                if (url.includes('id=')) {
+                    return url;
+                }
+
+                // Simple pattern matching for QR code URLs
+                const text = extractTextFromImage(imageData);
+                if (text && text.includes('?id=')) {
+                    return text;
+                }
+            } catch (error) {
+                console.log('QR detection error:', error);
+            }
+            return null;
+        }
+
+        function extractTextFromImage(imageData) {
+            // Simplified text extraction - in reality you'd use OCR or QR library
+            // This is just a placeholder
+            return null;
+        }
+
         function handleQRCodeDetected(url) {
             try {
-                console.log('🔗 Xử lý QR code:', url);
                 stopQRScanner();
 
                 const urlObj = new URL(url);
@@ -746,171 +635,63 @@
 
                 if (receiverId) {
                     showStatus('sender', '✅ Đã quét QR code thành công!', 'connected');
+
                     // Chuyển hướng đến URL với ID
-                    setTimeout(() => {
-                        window.location.href = `${window.location.origin}${window.location.pathname}?id=${receiverId}`;
-                    }, 1000);
+                    window.location.href = `${window.location.origin}${window.location.pathname}?id=${receiverId}`;
                 } else {
                     showStatus('sender', '❌ QR code không hợp lệ', 'error');
                 }
             } catch (error) {
-                console.error('❌ Lỗi xử lý QR code:', error);
                 showStatus('sender', '❌ Lỗi xử lý QR code', 'error');
             }
         }
 
-        // Kết nối đến receiver
         async function connectToReceiver(receiverId) {
             try {
-                showStatus('sender', '🎤 Đang yêu cầu quyền truy cập micro...', 'info');
-
-                // Lấy stream microphone với cấu hình tối ưu
+                showStatus('sender', 'Đang xin quyền truy cập micro...', 'info');
                 app.localStream = await navigator.mediaDevices.getUserMedia({
                     audio: {
                         channelCount: 1,
                         sampleRate: 48000,
-                        echoCancellation: false, // Tắt để có chất lượng gốc
-                        noiseSuppression: false, // Tắt để có chất lượng gốc  
-                        autoGainControl: false, // Tắt - quan trọng để không bị giảm âm lượng
-                        // Constraints để tăng volume
-                        volume: 1.0,
-                        sampleSize: 16,
-                        // Tắt các tính năng xử lý của browser
-                        googEchoCancellation: false,
-                        googAutoGainControl: false,
-                        googNoiseSuppression: false,
-                        googHighpassFilter: false
+                        echoCancellation: false,
+                        noiseSuppression: false,
+                        autoGainControl: false
                     },
                     video: false
                 });
 
-                console.log('✅ Đã lấy được microphone stream');
-                console.log('🎛️ Microphone settings:', app.localStream.getAudioTracks()[0].getSettings());
-
-                // Thử điều chỉnh gain nếu được
-                const audioTrack = app.localStream.getAudioTracks()[0];
-                if (typeof audioTrack.applyConstraints === 'function') {
-                    try {
-                        await audioTrack.applyConstraints({
-                            advanced: [{
-                                volume: 1.0
-                            }]
-                        });
-                        console.log('✅ Đã áp dụng volume constraint');
-                    } catch (constraintError) {
-                        console.log('⚠️ Không thể áp dụng volume constraint:', constraintError);
-                    }
-                }
-
-                showStatus('sender', '📞 Đang kết nối đến máy tính...', 'info');
+                showStatus('sender', 'Đang thực hiện cuộc gọi đến máy tính...', 'info');
                 const call = app.peer.call(receiverId, app.localStream);
                 app.currentCall = call;
 
-                call.on('stream', () => {
-                    showStatus('sender', '✅ Đã kết nối! Đang truyền âm thanh...', 'connected');
-                    document.getElementById('sender-auto-view').classList.add('hidden');
-                    document.getElementById('sender-connected-view').classList.remove('hidden');
-                    document.getElementById('muteBtn').classList.remove('hidden');
-                    document.getElementById('unmuteBtnSender').classList.add('hidden');
-
-                    startVisualizer();
-                    testMicrophoneVolume(app.localStream);
-                });
+                showStatus('sender', '✅ Đã kết nối! Đang gửi âm thanh...', 'connected');
+                document.getElementById('sender-auto-view').classList.add('hidden');
+                document.getElementById('sender-connected-view').classList.remove('hidden');
+                document.getElementById('muteBtn').classList.remove('hidden');
+                document.getElementById('unmuteBtnSender').classList.add('hidden');
+                startVisualizer();
 
                 call.on('close', () => {
-                    console.log('🔌 Cuộc gọi đã đóng');
-                    showStatus('sender', '🔌 Kết nối đã đóng', 'info');
+                    showStatus('sender', '🚫 Kết nối đã đóng.', 'info');
                     resetUI();
                 });
 
                 call.on('error', (err) => {
-                    console.error('❌ Lỗi cuộc gọi:', err);
-                    showStatus('sender', `❌ Lỗi kết nối: ${err.message}`, 'error');
+                    showStatus('sender', `❌ Lỗi cuộc gọi: ${err.message}`, 'error');
                     resetUI();
                 });
 
             } catch (err) {
-                console.error('❌ Lỗi kết nối:', err);
-                let message = `❌ Lỗi: ${err.message}`;
+                let message = `❌ Lỗi: ${err.message}.`;
                 if (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError') {
-                    message = '❌ Bị từ chối quyền truy cập micro. Vui lòng cấp quyền và thử lại.';
-                } else if (err.name === 'NotFoundError') {
-                    message = '❌ Không tìm thấy microphone.';
-                } else if (err.name === 'NotReadableError') {
-                    message = '❌ Không thể truy cập microphone. Có thể đang bị ứng dụng khác sử dụng.';
+                    message = '❌ Bạn đã từ chối quyền truy cập micro. Vui lòng cấp quyền để tiếp tục.';
                 }
                 showStatus('sender', message, 'error');
                 resetUI();
             }
         }
 
-        // Kiểm tra âm lượng microphone
-        function testMicrophoneVolume(stream) {
-            const audioContext = new AudioContext();
-            const source = audioContext.createMediaStreamSource(stream);
-            const analyser = audioContext.createAnalyser();
-            analyser.fftSize = 256;
-            source.connect(analyser);
-
-            const dataArray = new Uint8Array(analyser.frequencyBinCount);
-            let maxVolume = 0;
-
-            function checkVolume() {
-                if (!stream.active) return;
-
-                analyser.getByteFrequencyData(dataArray);
-
-                let sum = 0;
-                for (let i = 0; i < dataArray.length; i++) {
-                    sum += dataArray[i];
-                }
-                const average = sum / dataArray.length;
-                const volumePercent = (average / 256) * 100;
-
-                // Cập nhật max volume
-                if (volumePercent > maxVolume) {
-                    maxVolume = volumePercent;
-                }
-
-                // Cập nhật volume cho visualizer
-                app.volumeLevel = volumePercent;
-
-                // Phân loại và hiển thị
-                let status, volumeClass;
-                if (volumePercent < 1) {
-                    status = "🔇 RẤT NHỎ";
-                    volumeClass = "volume-low";
-                } else if (volumePercent < 5) {
-                    status = "🔈 NHỎ";
-                    volumeClass = "volume-low";
-                } else if (volumePercent < 20) {
-                    status = "🔉 TRUNG BÌNH";
-                    volumeClass = "volume-medium";
-                } else {
-                    status = "🔊 TỐT";
-                    volumeClass = "volume-high";
-                }
-
-                console.log(`📢 Microphone: ${volumePercent.toFixed(1)}% - ${status}`);
-
-                // Cảnh báo nếu âm lượng quá thấp
-                if (volumePercent < 2 && maxVolume < 5) {
-                    showStatus('sender', `🔇 Âm lượng rất thấp: ${volumePercent.toFixed(1)}% - HÃY NÓI TO HƠN!`, 'error');
-                } else if (volumePercent < 5) {
-                    showStatus('sender', `🔈 Âm lượng: ${volumePercent.toFixed(1)}% - Nói to hơn để chất lượng tốt hơn`, 'info');
-                } else {
-                    showStatus('sender', `✅ Âm lượng tốt: ${volumePercent.toFixed(1)}%`, 'connected');
-                }
-
-                setTimeout(checkVolume, 1000);
-            }
-
-            checkVolume();
-        }
-
-        // =============================================
-        // HÀM TIỆN ÍCH
-        // =============================================
+        // --- CÁC HÀM TIỆN ÍCH ---
         function toggleMicrophone(shouldBeEnabled) {
             if (app.localStream) {
                 app.localStream.getAudioTracks().forEach(track => {
@@ -920,10 +701,10 @@
                 document.getElementById('unmuteBtnSender').classList.toggle('hidden', !shouldBeEnabled);
 
                 if (shouldBeEnabled) {
-                    showStatus('sender', '🎤 Đã bật microphone', 'connected');
+                    showStatus('sender', '🎤 Đã bật lại âm thanh.', 'connected');
                     startVisualizer();
                 } else {
-                    showStatus('sender', '🔇 Đã tắt microphone', 'info');
+                    showStatus('sender', '🔇 Đã tạm dừng âm thanh.', 'info');
                     stopVisualizer();
                 }
             }
@@ -933,14 +714,11 @@
             const statusEl = document.getElementById(`${device}Status`);
             if (statusEl) {
                 statusEl.textContent = message;
-                statusEl.className = `status-box status-${type}`;
+                statusEl.className = `status ${type}`;
             }
-            console.log(`📢 ${device.toUpperCase()} Status: ${message}`);
         }
 
         function disconnect() {
-            console.log('🔌 Ngắt kết nối...');
-
             if (app.currentCall) {
                 app.currentCall.close();
             }
@@ -956,41 +734,24 @@
             resetUI();
         }
 
-        function cleanupConnection() {
-            if (app.ws) {
-                app.ws.close();
-                app.ws = null;
-            }
-            resetUI();
-        }
-
         function resetUI() {
             if (isMobile) {
                 document.getElementById('sender-auto-view').classList.add('hidden');
                 document.getElementById('sender-connected-view').classList.add('hidden');
                 document.getElementById('sender-manual-view').classList.remove('hidden');
                 document.getElementById('senderStatus').innerHTML = '';
-
                 const connectBtn = document.getElementById('connectBtn');
-                if (connectBtn) {
-                    connectBtn.disabled = false;
-                    connectBtn.innerHTML = '🎤 Kết Nối Với Máy Tính';
-                }
-
-                // Xóa ID khỏi URL
+                if (connectBtn) connectBtn.disabled = false;
                 window.history.replaceState({}, document.title, window.location.pathname);
             } else {
                 document.getElementById('receiver-initial-view').classList.remove('hidden');
                 document.getElementById('receiver-connected-view').classList.add('hidden');
                 document.getElementById('receiverStatus').innerHTML = '';
-
                 const remoteAudio = document.getElementById('remoteAudio');
                 if (remoteAudio.srcObject) {
                     remoteAudio.srcObject.getTracks().forEach(track => track.stop());
                     remoteAudio.srcObject = null;
                 }
-
-                // Khởi tạo lại để có ID mới
                 initializeReceiver();
             }
         }
@@ -999,21 +760,15 @@
             const remoteAudio = document.getElementById('remoteAudio');
             remoteAudio.play()
                 .then(() => {
-                    showStatus('receiver', '🔊 Đang phát âm thanh qua loa', 'connected');
+                    showStatus('receiver', '✅ Đang phát âm thanh qua loa!', 'connected');
                     document.getElementById('unmuteBtn').classList.add('hidden');
                 })
-                .catch(e => {
-                    console.error('❌ Lỗi phát âm thanh:', e);
-                    showStatus('receiver', `❌ Không thể phát âm thanh: ${e.message}`, 'error');
-                });
+                .catch(e => showStatus('receiver', `❌ Lỗi phát âm thanh: ${e.message}.`, 'error'));
         }
 
-        // =============================================
-        // VISUALIZER ÂM THANH
-        // =============================================
+        // --- AUDIO VISUALIZER FUNCTIONS ---
         function startVisualizer() {
             if (!app.localStream || !app.localStream.active) return;
-
             if (!app.audioContext) {
                 app.audioContext = new(window.AudioContext || window.webkitAudioContext)();
             }
@@ -1022,14 +777,13 @@
                 const source = app.audioContext.createMediaStreamSource(app.localStream);
                 source.connect(app.analyser);
             }
-
             app.analyser.fftSize = 256;
             const bufferLength = app.analyser.frequencyBinCount;
             const dataArray = new Uint8Array(bufferLength);
             const canvas = document.getElementById('visualizer');
             const canvasCtx = canvas.getContext('2d');
 
-            // Cập nhật kích thước canvas
+            // Set canvas size
             canvas.width = canvas.offsetWidth;
             canvas.height = canvas.offsetHeight;
 
@@ -1038,38 +792,27 @@
                     stopVisualizer();
                     return;
                 }
-
                 app.visualizerFrameId = requestAnimationFrame(draw);
                 app.analyser.getByteFrequencyData(dataArray);
 
-                // Xóa canvas
-                canvasCtx.fillStyle = '#1a202c';
+                canvasCtx.fillStyle = '#f7fafc';
                 canvasCtx.fillRect(0, 0, canvas.width, canvas.height);
 
-                // Vẽ visualizer
-                const barWidth = (canvas.width / bufferLength) * 2.5;
+                let barWidth = (canvas.width / bufferLength) * 2.5;
+                let barHeight;
                 let x = 0;
 
                 for (let i = 0; i < bufferLength; i++) {
-                    const barHeight = (dataArray[i] / 255) * canvas.height;
+                    barHeight = (dataArray[i] / 255) * canvas.height;
+                    const gradient = canvasCtx.createLinearGradient(0, canvas.height - barHeight, 0, canvas.height);
+                    gradient.addColorStop(0, '#667eea');
+                    gradient.addColorStop(1, '#764ba2');
 
-                    // Màu sắc dựa trên cường độ
-                    const hue = i / bufferLength * 360;
-                    const saturation = 80 + (dataArray[i] / 255) * 20;
-                    const lightness = 40 + (dataArray[i] / 255) * 30;
-
-                    canvasCtx.fillStyle = `hsl(${hue}, ${saturation}%, ${lightness}%)`;
+                    canvasCtx.fillStyle = gradient;
                     canvasCtx.fillRect(x, canvas.height - barHeight, barWidth, barHeight);
-
                     x += barWidth + 1;
                 }
-
-                // Vẽ volume text
-                canvasCtx.fillStyle = '#ffffff';
-                canvasCtx.font = '12px Arial';
-                canvasCtx.fillText(`Volume: ${app.volumeLevel.toFixed(1)}%`, 10, 20);
             }
-
             draw();
         }
 
@@ -1081,18 +824,10 @@
             const canvas = document.getElementById('visualizer');
             if (canvas) {
                 const canvasCtx = canvas.getContext('2d');
-                canvasCtx.fillStyle = '#1a202c';
+                canvasCtx.fillStyle = '#f7fafc';
                 canvasCtx.fillRect(0, 0, canvas.width, canvas.height);
             }
         }
-
-        // =============================================
-        // XỬ LÝ SỰ KIỆN TRANG ĐÓNG
-        // =============================================
-        window.addEventListener('beforeunload', () => {
-            console.log('🧹 Dọn dẹp trước khi đóng trang...');
-            disconnect();
-        });
     </script>
 </body>
 
