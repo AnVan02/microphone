@@ -459,7 +459,8 @@
 
                 app.ws.onerror = (error) => {
                     console.error("❌ WebSocket error:", error);
-                    showStatus('receiver', '❌ Không thể kết nối Python server. Hãy chắc server đang chạy!', 'error');
+                    showStatus('receiver', '❌ Không thể kết nối Python server. Hãy chắc server đang chạy!',
+                        'error');
                 };
 
             }).catch(err => {
@@ -560,7 +561,8 @@
             document.getElementById('scanner-container').classList.add('hidden');
             document.getElementById('startScannerBtn').classList.remove('hidden');
             document.getElementById('stopScannerBtn').classList.add('hidden');
-            document.getElementById('scanner-info').textContent = 'Nhấn "Quét QR Code" và hướng camera về phía mã QR trên máy tính';
+            document.getElementById('scanner-info').textContent =
+                'Nhấn "Quét QR Code" và hướng camera về phía mã QR trên máy tính';
 
             showStatus('sender', 'Đã dừng quét QR code', 'info');
         }

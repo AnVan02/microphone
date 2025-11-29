@@ -24,6 +24,33 @@
 
 </html>
 
+def calculate_audio_levels(self, audio_data):
+"""Calculate audio levels for visualization - NHẠY HƠN với âm thanh nhỏ"""
+# Convert to numpy array
+audio_array = np.frombuffer(audio_data, dtype=np.int16)
+
+# Tính RMS level
+self.rms_level = np.sqrt(np.mean(audio_array.astype(np.float32) ** 2))
+
+# Tính peak level
+self.peak_level = np.max(np.abs(audio_array))
+
+# 🔥 QUAN TRỌNG: Tăng độ nhạy cho âm thanh nhỏ
+# Chuẩn hóa levels (0-100) với độ nhạy cao hơn
+rms_normalized = min(self.rms_level / 3276.8, 100) # Tăng độ nhạy 10x
+peak_normalized = min(self.peak_level / 3276.8, 100)
+
+# Log cả âm thanh rất nhỏ
+if rms_normalized > 0.1: # Giảm ngưỡng từ 1.0 xuống 0.1
+logging.info(f"🎤 Audio detected - RMS: {rms_normalized:.2f}%, Peak: {peak_normalized:.2f}%")
+elif rms_normalized > 0.01: # Log cả âm thanh rất nhỏ
+logging.info(f"🔈 Very quiet - RMS: {rms_normalized:.3f}%, Peak: {peak_normalized:.3f}%")
+
+# Store in buffer for visualization
+self.audio_buffer.append(rms_normalized)
+
+return rms_normalized, peak_normalized
+
 <style>
     body {
         font-family: 'Arial';
@@ -275,12 +302,12 @@
 
     /* Desktop Banner */
     /* .rtx-section {
-    background: #000 url("../palit/Rectangle 3.png") no-repeat center center;
-    background-size: cover;
-    color: #fff;
-    padding: 60px 80px;
-    font-family: Arial, sans-serif;
-} */
+        background: #000 url("../palit/Rectangle 3.png") no-repeat center center;
+        background-size: cover;
+        color: #fff;
+        padding: 60px 80px;
+        font-family: Arial, sans-serif;
+    } */
 
 
     .rtx-container {

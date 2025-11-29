@@ -1,507 +1,114 @@
+<?php
+// Kết nối database
+$servername = "localhost";
+$username = "username";
+$password = "password";
+$dbname = "spa_database";
+
+$conn = new mysqli($servername, $username, $password, $dbname);
+
+if ($conn->connect_error) {
+    die("Connection failed: " . $conn->connect_error);
+}
+
+// Lấy thông tin dịch vụ
+$service_id = 1; // ID của Hydrafacial
+$service_sql = "SELECT * FROM services WHERE id = $service_id";
+$service_result = $conn->query($service_sql);
+$service = $service_result->fetch_assoc();
+
+// Lấy chi tiết dịch vụ
+$details_sql = "SELECT * FROM service_details WHERE service_id = $service_id";
+$details_result = $conn->query($details_sql);
+?>
+
 <!DOCTYPE html>
-<html lang="vi">
+<html lang="en">
 
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>🎙️ Mic Qua Mạng (Phiên bản cải tiến)</title>
-    <!-- THƯ VIỆN CẦN THIẾT -->
-    <script src="https://unpkg.com/peerjs@1.4.7/dist/peerjs.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/gh/davidshimjs/qrcodejs/qrcode.min.js"></script>
-
+    <title><?php echo $service['name']; ?> - Spa Service</title>
     <style>
         * {
             margin: 0;
             padding: 0;
             box-sizing: border-box;
-            font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
         }
 
         body {
-            background: linear-gradient(135deg, #2b5876 0%, #4e4376 100%);
+            font-family: 'Arial', sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             min-height: 100vh;
-            padding: 20px;
             display: flex;
             align-items: center;
             justify-content: center;
-            color: #4a5568;
+            padding: 20px;
         }
 
         .container {
-            max-width: 500px;
+            max-width: 1200px;
             width: 100%;
-            background: white;
-            border-radius: 15px;
-            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
-            padding: 25px;
+        }
+
+        .header {
             text-align: center;
+            margin-bottom: 40px;
         }
 
-        h1 {
-            color: #2d3748;
-            margin-bottom: 20px;
-            font-size: 24px;
+        .header h1 {
+            color: white;
+            font-size: 3rem;
+            font-weight: 300;
+            letter-spacing: 3px;
+            margin-bottom: 10px;
         }
 
-        .btn {
+        .header .subtitle {
+            color: rgba(255, 255, 255, 0.8);
+            font-size: 1.2rem;
+            letter-spacing: 2px;
+        }
+
+        .service-card {
+            background: white;
+            border-radius: 20px;
+            padding: 40px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 40px;
+            align-items: start;
+        }
+
+        .service-image {
             width: 100%;
-            padding: 15px;
-            border: none;
-            border-radius: 10px;
-            font-size: 16px;
-            font-weight: 600;
-            cursor: pointer;
-            margin: 10px 0;
-            transition: all 0.3s;
-        }
-
-        .btn-primary {
-            background: #667eea;
-            color: white;
-        }
-
-        .btn-secondary {
-            background: #38a169;
-            color: white;
-        }
-
-        .btn-warning {
-            background: #d69e2e;
-            color: white;
-        }
-
-        .btn-danger {
-            background: #e53e3e;
-            color: white;
-        }
-
-        .btn:disabled {
-            background: #cbd5e0;
-            opacity: 0.6;
-            cursor: not-allowed;
-        }
-
-        .btn:hover:not(:disabled) {
-            opacity: 0.9;
-        }
-
-        .hidden {
-            display: none;
-        }
-
-        .info {
-            background: #ebf8ff;
-            color: #2a4365;
-            padding: 12px;
-            border-radius: 8px;
-            margin: 15px 0;
-            font-size: 14px;
-            line-height: 1.6;
-            border-left: 4px solid #4299e1;
-            text-align: left;
-        }
-
-        .status {
-            padding: 15px;
-            border-radius: 10px;
-            margin: 15px 0;
-            font-weight: 500;
-            border: 2px solid transparent;
-            word-wrap: break-word;
-        }
-
-        .status.info {
-            background: #fffbeb;
-            color: #92400e;
-            border-color: #fbbF24;
-        }
-
-        .status.connected {
-            background: #c6f6d5;
-            color: #22543d;
-            border-color: #48bb78;
-        }
-
-        .status.error {
-            background: #fed7d7;
-            color: #742a2a;
-            border-color: #f56565;
-        }
-
-        #qrcode-container {
+            height: 400px;
+            background: linear-gradient(45deg, #f093fb 0%, #f5576c 100%);
+            border-radius: 15px;
             display: flex;
-            justify-content: center;
             align-items: center;
-            padding: 20px;
-            border: 2px dashed #e2e8f0;
-            border-radius: 8px;
-            margin-top: 20px;
-            min-height: 290px;
+            justify-content: center;
+            color: white;
+            font-size: 1.5rem;
         }
 
-        /* NEW: Visualizer style */
-        #visualizer-container {
-            margin-top: 15px;
-            padding: 10px;
-            background-color: #f7fafc;
-            border-radius: 8px;
+        .service-info h2 {
+            color: #333;
+            font-size: 2.5rem;
+            margin-bottom: 10px;
         }
 
-        #visualizer {
-            width: 100%;
-            height: 50px;
-            border-radius: 5px;
-        }
-    </style>
-</head>
-
-<body>
-    <div class="container">
-        <h1>🎙️ Mic Qua Mạng</h1>
-
-        <!-- === GIAO DIỆN ĐIỆN THOẠI (GỬI) === -->
-        <div id="senderDiv" class="hidden">
-            <div id="sender-manual-view">
-                <div class="info">Để kết nối, hãy dùng Camera trên điện thoại của bạn quét mã QR hiển thị trên màn hình
-                    máy tính.</div>
-            </div>
-            <div id="sender-auto-view" class="hidden">
-                <button class="btn btn-primary" id="connectBtn">🎤 Kết nối với Máy tính</button>
-            </div>
-            <div id="sender-connected-view" class="hidden">
-                <!-- NEW: Audio Visualizer -->
-                <div id="visualizer-container">
-                    <canvas id="visualizer"></canvas>
-                </div>
-                <div>
-                    <button id="muteBtn" class="btn btn-warning" onclick="toggleMicrophone(false)">🔇 Tạm dừng âm
-                        thanh</button>
-                    <button id="unmuteBtnSender" class="btn btn-secondary hidden" onclick="toggleMicrophone(true)">🎤
-                        Bật lại âm thanh</button>
-                </div>
-                <hr style="margin: 15px 0; border: 1px solid #e2e8f0;">
-                <button class="btn btn-danger" onclick="disconnect()">🔴 Dừng Kết Nối</button>
-            </div>
-            <div id="senderStatus"></div>
-        </div>
-
-        <!-- === GIAO DIỆN MÁY TÍNH (NHẬN) === -->
-        <div id="receiverDiv" class="hidden">
-            <audio id="remoteAudio" playsinline style="display: none;"></audio>
-            <div id="receiver-initial-view">
-                <div class="info">Dùng Camera điện thoại quét mã QR này để kết nối và biến nó thành micro không dây cho
-                    máy tính.</div>
-                <div id="qrcode-container">
-                    <p>Đang kết nối đến máy chủ...</p>
-                </div>
-            </div>
-            <div id="receiver-connected-view" class="hidden">
-                <div class="info">Đã kết nối! Âm thanh từ điện thoại đang được nhận.</div>
-                <button id="unmuteBtn" class="btn btn-secondary" onclick="playAudio()">🔊 Bật Âm Thanh Ra Loa</button>
-                <div class="info" style="font-size: 12px; margin-top: 20px;">Lưu ý: Nút trên chỉ phát âm thanh ra loa để
-                    bạn kiểm tra. Để sử dụng làm micro hệ thống, bạn cần định tuyến âm thanh của trình duyệt này vào
-                    "Virtual Audio Cable".</div>
-            </div>
-            <div id="receiverStatus"></div>
-        </div>
-    </div>
-
-    <script>
-        // --- REFACTORED: App state and config ---
-        const app = {
-            peer: null,
-            currentCall: null,
-            localStream: null,
-            audioContext: null, // For visualizer
-            analyser: null, // For visualizer
-            visualizerFrameId: null // For visualizer
-        };
-
-        // Configuration for PeerJS server.
-        // Default is the public cloud server. You can change this to your own.
-        const PEER_CONFIG = {
-            host: '0.peerjs.com',
-            port: 443,
-            secure: true,
-            path: '/'
-        };
-
-        const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
-
-        // --- LOGIC CHUNG ---
-        document.addEventListener('DOMContentLoaded', () => {
-            if (isMobile) {
-                document.getElementById('senderDiv').classList.remove('hidden');
-                initializeSender();
-            } else {
-                document.getElementById('receiverDiv').classList.remove('hidden');
-                initializeReceiver();
-            }
-        });
-
-        // --- LOGIC MÁY TÍNH (NHẬN) ---
-        function initializeReceiver() {
-            if (app.peer) app.peer.destroy();
-            showStatus('receiver', 'Đang kết nối đến máy chủ PeerJS...', 'info');
-            app.peer = new Peer(PEER_CONFIG);
-
-            app.peer.on('open', id => {
-                showStatus('receiver', `Sẵn sàng! ID của bạn: ${id}`, 'info');
-                const qrContainer = document.getElementById('qrcode-container');
-                qrContainer.innerHTML = '';
-                const pageUrl = window.location.href.split('?')[0];
-                const connectUrl = `${pageUrl}?id=${id}`;
-                new QRCode(qrContainer, {
-                    text: connectUrl,
-                    width: 256,
-                    height: 256
-                });
-            });
-
-            app.peer.on('call', call => {
-                showStatus('receiver', '📲 Có cuộc gọi đến, đang kết nối...', 'info');
-                app.currentCall = call;
-                call.answer(); // Automatically answer the call
-
-                const ws = new WebSocket("ws://localhost:8765");
-                ws.binaryType = "arraybuffer";
-
-                ws.onopen = () => {
-                    console.log("✅ WebSocket connected");
-                    startRecording();
-                };
-
-                async function startRecording() {
-                    const stream = await navigator.mediaDevices.getUserMedia({
-                        audio: true
-                    });
-                    const context = new AudioContext({
-                        sampleRate: 48000
-                    });
-                    const source = context.createMediaStreamSource(stream);
-
-                    const processor = context.createScriptProcessor(4096, 1, 1);
-                    source.connect(processor);
-                    processor.connect(context.destination);
-
-                    processor.onaudioprocess = (event) => {
-                        const input = event.inputBuffer.getChannelData(0);
-                        const buffer = new Float32Array(input);
-                        ws.send(buffer.buffer); // gửi dữ liệu âm thanh thô về Python
-                    };
-                }
-
-
-                call.on('close', () => {
-                    showStatus('receiver', '🚫 Kết nối đã đóng từ phía điện thoại.', 'info');
-                    resetUI();
-                });
-            });
-
-            app.peer.on('error', err => {
-                showStatus('receiver', `❌ Lỗi kết nối: ${err.message}. Vui lòng tải lại trang.`, 'error');
-                document.getElementById('qrcode-container').innerHTML = '<p>Không thể kết nối đến máy chủ.</p>';
-            });
-
-            app.peer.on('disconnected', () => {
-                showStatus('receiver', 'Mất kết nối tới máy chủ, đang thử kết nối lại...', 'error');
-                app.peer.reconnect();
-            });
-        }
-        // --- LOGIC ĐIỆN THOẠI (GỬI) ---
-        function initializeSender() {
-            const urlParams = new URLSearchParams(window.location.search);
-            const receiverId = urlParams.get('id');
-
-            if (receiverId) {
-                document.getElementById('sender-manual-view').classList.add('hidden');
-                document.getElementById('sender-auto-view').classList.remove('hidden');
-                const connectBtn = document.getElementById('connectBtn');
-                connectBtn.onclick = () => {
-                    connectBtn.disabled = true;
-                    if (app.peer) app.peer.destroy();
-                    app.peer = new Peer(PEER_CONFIG);
-                    app.peer.on('open', () => {
-                        connectToReceiver(receiverId);
-                    });
-                    app.peer.on('error', err => showStatus('sender', `❌ Lỗi PeerJS: ${err.message}`, 'error'));
-                };
-            } else {
-                document.getElementById('sender-manual-view').classList.remove('hidden');
-                document.getElementById('sender-auto-view').classList.add('hidden');
-            }
+        .price {
+            color: #f5576c;
+            font-size: 2rem;
+            font-weight: bold;
+            margin-bottom: 20px;
         }
 
-        async function connectToReceiver(receiverId) {
-            try {
-                showStatus('sender', 'Đang xin quyền truy cập micro...', 'info');
-                app.localStream = await navigator.mediaDevices.getUserMedia({
-                    audio: true,
-                    video: false
-                });
-
-                showStatus('sender', 'Đang thực hiện cuộc gọi đến máy tính...', 'info');
-                const call = app.peer.call(receiverId, app.localStream);
-                app.currentCall = call;
-
-                call.on('stream', () => {
-                    /* Receiver does not send stream back, so this is unlikely */
-                });
-
-                showStatus('sender', '✅ Đã kết nối! Đang gửi âm thanh...', 'connected');
-                document.getElementById('sender-auto-view').classList.add('hidden');
-                document.getElementById('sender-connected-view').classList.remove('hidden');
-                document.getElementById('muteBtn').classList.remove('hidden');
-                document.getElementById('unmuteBtnSender').classList.add('hidden');
-                startVisualizer(); // NEW: Start the visualizer
-
-                call.on('close', () => {
-                    showStatus('sender', '🚫 Kết nối đã đóng.', 'info');
-                    resetUI();
-                });
-                call.on('error', (err) => {
-                    showStatus('sender', `❌ Lỗi cuộc gọi: ${err.message}`, 'error');
-                    resetUI();
-                });
-
-            } catch (err) {
-                let message = `❌ Lỗi: ${err.message}.`;
-                if (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError') {
-                    message = '❌ Bạn đã từ chối quyền truy cập micro. Vui lòng cấp quyền để tiếp tục.';
-                }
-                showStatus('sender', message, 'error');
-                resetUI();
-            }
+        .description {
+            color: #666;
+            font-size: 1.1rem;
+            line-height: 1.6;
+            margin-bottom: 30px;
         }
-
-        // --- CÁC HÀM TIỆN ÍCH ---
-
-        function toggleMicrophone(shouldBeEnabled) {
-            if (app.localStream) {
-                app.localStream.getAudioTracks().forEach(track => {
-                    track.enabled = shouldBeEnabled;
-                });
-                document.getElementById('muteBtn').classList.toggle('hidden', shouldBeEnabled);
-                document.getElementById('unmuteBtnSender').classList.toggle('hidden', !shouldBeEnabled);
-
-                if (shouldBeEnabled) {
-                    showStatus('sender', '🎤 Đã bật lại âm thanh.', 'connected');
-                    startVisualizer();
-                } else {
-                    showStatus('sender', '🔇 Đã tạm dừng âm thanh.', 'info');
-                    stopVisualizer();
-                }
-            }
-        }
-
-        function showStatus(device, message, type) {
-            const statusEl = document.getElementById(`${device}Status`);
-            if (statusEl) {
-                statusEl.textContent = message;
-                statusEl.className = `status ${type}`;
-            }
-        }
-
-        function disconnect() {
-            if (app.currentCall) {
-                app.currentCall.close();
-            }
-            if (app.localStream) {
-                app.localStream.getTracks().forEach(track => track.stop());
-                app.localStream = null;
-            }
-            stopVisualizer();
-            resetUI();
-        }
-
-        function resetUI() {
-            if (isMobile) {
-                document.getElementById('sender-auto-view').classList.add('hidden');
-                document.getElementById('sender-connected-view').classList.add('hidden');
-                document.getElementById('sender-manual-view').classList.remove('hidden');
-                document.getElementById('senderStatus').innerHTML = '';
-                const connectBtn = document.getElementById('connectBtn');
-                if (connectBtn) connectBtn.disabled = false;
-                // Go back to the initial state without the receiver ID in the URL
-                window.history.replaceState({}, document.title, window.location.pathname);
-            } else { // Receiver
-                document.getElementById('receiver-initial-view').classList.remove('hidden');
-                document.getElementById('receiver-connected-view').classList.add('hidden');
-                document.getElementById('receiverStatus').innerHTML = '';
-                const remoteAudio = document.getElementById('remoteAudio');
-                if (remoteAudio.srcObject) {
-                    remoteAudio.srcObject.getTracks().forEach(track => track.stop());
-                    remoteAudio.srcObject = null;
-                }
-                // Re-initialize to get a new QR code
-                initializeReceiver();
-            }
-        }
-
-        function playAudio() {
-            const remoteAudio = document.getElementById('remoteAudio');
-            remoteAudio.play()
-                .then(() => {
-                    showStatus('receiver', '✅ Đang phát âm thanh qua loa!', 'connected');
-                    document.getElementById('unmuteBtn').classList.add('hidden');
-                })
-                .catch(e => showStatus('receiver', `❌ Lỗi phát âm thanh: ${e.message}.`, 'error'));
-        }
-
-        // --- NEW: AUDIO VISUALIZER FUNCTIONS ---
-        function startVisualizer() {
-            if (!app.localStream || !app.localStream.active) return;
-            if (!app.audioContext) {
-                app.audioContext = new(window.AudioContext || window.webkitAudioContext)();
-            }
-            if (!app.analyser) {
-                app.analyser = app.audioContext.createAnalyser();
-                const source = app.audioContext.createMediaStreamSource(app.localStream);
-                source.connect(app.analyser);
-            }
-            app.analyser.fftSize = 256;
-            const bufferLength = app.analyser.frequencyBinCount;
-            const dataArray = new Uint8Array(bufferLength);
-            const canvas = document.getElementById('visualizer');
-            const canvasCtx = canvas.getContext('2d');
-
-            function draw() {
-                if (!app.localStream || !app.localStream.getAudioTracks()[0].enabled) {
-                    stopVisualizer();
-                    return;
-                }
-                app.visualizerFrameId = requestAnimationFrame(draw);
-                app.analyser.getByteFrequencyData(dataArray);
-                canvasCtx.fillStyle = '#f7fafc'; // Background color
-                canvasCtx.fillRect(0, 0, canvas.width, canvas.height);
-                let barWidth = (canvas.width / bufferLength) * 2.5;
-                let barHeight;
-                let x = 0;
-                for (let i = 0; i < bufferLength; i++) {
-                    barHeight = dataArray[i] / 2;
-                    // Dynamic color based on volume
-                    canvasCtx.fillStyle = `rgb(102, 126, 234, ${barHeight / 100})`;
-                    canvasCtx.fillRect(x, canvas.height - barHeight, barWidth, barHeight);
-                    x += barWidth + 1;
-                }
-            }
-            draw();
-        }
-
-        function stopVisualizer() {
-            if (app.visualizerFrameId) {
-                cancelAnimationFrame(app.visualizerFrameId);
-                app.visualizerFrameId = null;
-            }
-            // Clear the canvas
-            const canvas = document.getElementById('visualizer');
-            if (canvas) {
-                const canvasCtx = canvas.getContext('2d');
-                canvasCtx.fillStyle = '#f7fafc';
-                canvasCtx.fillRect(0, 0, canvas.width, canvas.height);
-            }
-        }
-    </script>
-</body>
-
-</html>

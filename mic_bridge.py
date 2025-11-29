@@ -158,7 +158,7 @@ async def main():
     audio_thread.start()
 
     print(f"\nWebSocket Server đang chạy tại: ws://0.0.0.0:8765")
-    async with websockets.serve(handle_audio, "0.0.0.0", 9001):
+    async with websockets.serve(handle_audio, "0.0.0.0", 8765):
         await asyncio.Future() # Giữ server chạy vô thời hạn
 
 if __name__ == "__main__":
