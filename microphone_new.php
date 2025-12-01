@@ -828,6 +828,30 @@
                 canvasCtx.fillRect(0, 0, canvas.width, canvas.height);
             }
         }
+
+        function cleanup() {
+            if (analyser) {
+                try {
+                    analyser.disconnect();
+                } catch (e) {
+                    console.log("Error disconnecting analyser:", e);
+                }
+                if (audioContext) {
+                    try {
+                        audioContext.close();
+                    } catch (e) {
+                        console.log("Error closing audioContext:", e);
+                    }
+                }
+                if (audioContext) {
+                    try {
+                        audioContext = null;
+                    } catch (e) {
+                        console.log("Error nullifying audioContext:", e);
+                    }
+                }
+            }
+        }
     </script>
 </body>
 

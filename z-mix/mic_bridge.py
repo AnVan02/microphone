@@ -1,160 +1,174 @@
+# websocket_audio_server.py (Mô hình tham khảo từ các dự án mã nguồn mở)
 import asyncio
 import websockets
 import numpy as np
 import sounddevice as sd
 import threading
 import time
+import os
+import queue
+import socket 
+
+#=============
 
 # ========================
-#  CẤU HÌNH
+#  CẤU HÌNH CỐT LÕI (LOW LATENCY)
 # ========================
 SAMPLE_RATE = 48000
-CHANNELS = 1  # Chuyển sang mono để tương thích với YouTube
-BUFFER_SIZE = 512  # Giảm buffer size để giảm độ trễ
+CHANNELS = 1
+# Buffer Size: Giá trị tối ưu cho độ trễ thấp (thường là 256, 512, 1024)
+# Giảm buffer size giúp giảm độ trễ, nhưng tăng nguy cơ lỗi âm thanh
+BUFFER_SIZE = int(os.getenv('MIC_BRIDGE_BUFFER', '256')) 
+
+# Queue: Bộ đệm giữa luồng nhận (WebSocket) và luồng phát (sounddevice)
+# Giúp hệ thống ổn định khi có dao động về tốc độ mạng
+audio_queue = queue.Queue(maxsize=10) 
 
 # ========================
-#  IN DANH SÁCH THIẾT BỊ
+#  KHUẾCH ĐẠI TÍN HIỆU (Tham khảo)
 # ========================
-print("🎧 Danh sách thiết bị âm thanh:\n")
-for i, d in enumerate(sd.query_devices()):
-    marker = ""
-    if 'cable' in d['name'].lower():
-        marker = " ⭐ VB-CABLE"
-    print(f"[{i}] {d['name']}")
-    print(f"    📥 Input: {d['max_input_channels']} | 📤 Output: {d['max_output_channels']}{marker}\n")
-
-# ========================
-#  CHỌN DEVICE TỰ ĐỘNG
-# ========================
-def find_vb_cable():
-    """Tìm VB-Cable Input (thiết bị output để phát âm thanh vào)"""
-    devices = sd.query_devices()
-    for i, d in enumerate(devices):
-        name = d['name'].lower()
-        if any(cable_name in name for cable_name in ['cable input', 'vb-cable', 'virtual cable']):
-            if d['max_output_channels'] > 0:
-                return i
-    return None
-
-vb_device = find_vb_cable()
-
-if vb_device is None:
-    print("❌ Không tìm thấy VB-Cable. Vui lòng nhập ID thiết bị thủ công:")
-    DEVICE_ID = int(input("Nhập device ID: "))
-else:
-    DEVICE_ID = vb_device
-    print(f"✅ Tự động chọn device [{DEVICE_ID}] {sd.query_devices(DEVICE_ID)['name']}")
-
-# Kiểm tra thiết bị có hoạt động không
-try:
-    test_data = np.zeros(512, dtype=np.float32)
-    sd.play(test_data, samplerate=SAMPLE_RATE, device=DEVICE_ID, blocking=False)
-    sd.stop()
-    print("✅ Thiết bị âm thanh hoạt động tốt")
-except Exception as e:
-    print(f"❌ Lỗi thiết bị âm thanh: {e}")
-    exit(1)
-
-# ========================
-#  BIẾN TOÀN CỤC
-# ========================
-current_audio_data = None
-is_playing = False
-audio_lock = threading.Lock()
-
-# ========================
-#  XỬ LÝ AUDIO LIÊN TỤC
-# ========================
-
-def audio_playback_loop():
-    """Vòng lặp phát âm thanh liên tục"""
-    global current_audio_data, is_playing
+def optimize_audio_quality(audio_data):
+    """
+    Hàm chuẩn hóa và khuếch đại tín hiệu audio (Dynamic Gain).
+    Quan trọng để AI nhận được giọng nói rõ ràng, bất kể âm lượng đầu vào.
+    """
+    audio_data = audio_data.astype(np.float32)
+    new_max = np.max(np.abs(audio_data))
     
-    print("🔊 Bắt đầu vòng lặp phát âm thanh...")
+    # Mục tiêu tối đa an toàn (gần 1.0)
+    target_max = 0.9999 
+
+    # Nếu âm thanh quá nhỏ, tăng cường khuếch đại
+    if new_max > 0.01 and new_max < target_max:
+        # Áp dụng khuếch đại và đảm bảo không bị méo tiếng (Clipping)
+        audio_data = np.clip(audio_data * (target_max / new_max), -1.0, 1.0)
     
+    return audio_data
+
+# ========================
+#  1. LUỒNG PHÁT LẠI (Playback Thread)
+# ========================
+
+def audio_playback_loop(device_id):
+    """
+    Chạy trong một luồng riêng biệt để liên tục lấy dữ liệu từ queue và phát ra thiết bị.
+    Sử dụng stream mode 'low latency' và blocksize nhỏ.
+    """
     try:
         with sd.OutputStream(
             samplerate=SAMPLE_RATE,
             channels=CHANNELS,
             dtype=np.float32,
-            device=DEVICE_ID,
-            blocksize=BUFFER_SIZE,
-            latency='low'
+            device=device_id,
+            blocksize=BUFFER_SIZE, # Sử dụng BUFFER_SIZE đã định nghĩa
+            latency='low'          # Đảm bảo độ trễ thấp nhất
         ) as stream:
-            
-            print("✅ Audio stream đã sẵn sàng")
-            
+            print(f"✅ Luồng phát audio đã sẵn sàng (Device: {sd.query_devices(device_id)['name']})")
             while True:
-                with audio_lock:
-                    if current_audio_data is not None and len(current_audio_data) > 0:
-                        try:
-                            # Đảm bảo dữ liệu là mono
-                            if current_audio_data.ndim == 1:
-                                audio_to_play = current_audio_data.reshape(-1, 1)
-                            else:
-                                audio_to_play = current_audio_data[:, 0].reshape(-1, 1)  # Lấy kênh trái
-                            stream.write(audio_to_play.astype(np.float32))
-                            is_playing = True
-                            print(f"📤 Phát audio: {len(audio_to_play)} samples, max: {np.max(audio_to_play):.4f}, min: {np.min(audio_to_play):.4f}")
-                        except Exception as e:
-                            print(f"⚠️ Lỗi phát audio: {e}")
-                            is_playing = False
+                try:
+                    # Lấy dữ liệu từ queue (timeout ngắn để stream không bị chặn lâu)
+                    audio_data = audio_queue.get(timeout=0.1)
+                    
+                    if audio_data is not None and len(audio_data) > 0:
+                        optimized = optimize_audio_quality(audio_data)
+                        
+                        # Chia và phát từng phần (chunk) để đảm bảo độ trễ thấp
+                        chunk_size = BUFFER_SIZE
+                        for i in range(0, len(optimized), chunk_size):
+                            chunk = optimized[i:i+chunk_size]
+                            stream.write(chunk.reshape(-1, 1).astype(np.float32))
+                            
+                    # Tối ưu hóa: Nếu queue rỗng, phát âm thanh im lặng (zero padding)
                     else:
                         silence = np.zeros((BUFFER_SIZE, CHANNELS), dtype=np.float32)
                         stream.write(silence)
-                        is_playing = False
-                
-                time.sleep(0.001)  # Giảm CPU usage
-                
+                        
+                except queue.Empty:
+                    # Nếu queue rỗng, phát âm thanh im lặng để giữ stream hoạt động
+                    silence = np.zeros((BUFFER_SIZE, CHANNELS), dtype=np.float32)
+                    stream.write(silence)
+                except Exception as e:
+                    # Lỗi trong quá trình phát
+                    print(f"❌ Lỗi phát audio: {e}")
+                    time.sleep(0.01)
     except Exception as e:
-        print(f"❌ Lỗi audio stream: {e}")
-        import traceback
-        traceback.print_exc()
+        print(f"❌ Lỗi khởi tạo stream: {e}")
 
 # ========================
-#  WEBSOCKET HANDLER
+#  2. WEBSOCKET HANDLER (Nhận dữ liệu)
 # ========================
 async def handle_audio(websocket):
-    global current_audio_data
-    
-    print(f"✅ Client đã kết nối từ {websocket.remote_address}")
-    
+    """
+        Hàm xử lý kết nối WebSocket, nhận dữ liệu audio và đưa vào queue.
+    """
+    print(f"✅ Client kết nối: {websocket.remote_address}")
     try:
         async for message in websocket:
+            # Chuyển đổi dữ liệu binary nhận được thành numpy array (float32)
+            audio_data = np.frombuffer(message, dtype=np.float32)
+            
+            # Xử lý: Lấy kênh mono (cần thiết nếu đầu vào là stereo)
+            if len(audio_data) > 0 and len(audio_data) % 2 == 0:
+                audio_data = audio_data[::2] 
+            # Đưa dữ liệu vào queue để luồng phát xử lý
             try:
-                audio_data = np.frombuffer(message, dtype=np.float32)
-                print(f"📥 Nhận audio: {len(audio_data)} samples, shape: {audio_data.shape}, max: {np.max(audio_data):.4f}, min: {np.min(audio_data):.4f}")
-                
-                with audio_lock:
-                    current_audio_data = audio_data
-                        
-            except Exception as e:
-                print(f"⚠️ Lỗi xử lý audio: {e}")
+                audio_queue.put_nowait(audio_data)
+            except queue.Full:
+                # Nếu queue đầy (xảy ra khi luồng nhận nhanh hơn luồng phát), 
+                # bỏ qua hoặc xóa phần tử cũ nhất (bỏ qua là giải pháp đơn giản hơn)
+                pass 
                 
     except websockets.exceptions.ConnectionClosed:
-        print(f"❌ Client {websocket.remote_address} đã ngắt kết nối")
-        with audio_lock:
-            current_audio_data = None
+        # ⚠️ Client ngắt kết nối
+        print(f"⚠️ Client ngắt kết nối: {websocket.remote_address}")
+    except Exception as e:
+        print(f"❌ Lỗi WebSocket: {e}")
+    finally:
+        # Dọn dẹp queue khi kết nối đóng
+        while not audio_queue.empty():
+            try:
+                audio_queue.get_nowait()
+            except:
+                break
+        
+        # THÊM DÒNG NÀY ĐỂ XÁC NHẬN PHIÊN ĐÃ KẾT THÚC
+        print(f"🧹 Đã dọn dẹp phiên kết nối từ {websocket.remote_address}. Server vẫn đang lắng nghe...") 
+        # --------------------------------------------------------------------------------------------
+
+# ========================
+#  3. MAIN SERVER VÀ KHỞI TẠO
+# ========================
+
+def find_vb_cable():
+    """Tìm ID của CABLE Input"""
+    devices = sd.query_devices()
+    for i, d in enumerate(devices):
+        if 'cable input' in d['name'].lower() and d['max_output_channels'] > 0:
+            return i
+    return None
 
 async def main():
-    audio_thread = threading.Thread(target=audio_playback_loop, daemon=True)
+    device_id = find_vb_cable()
+    if device_id is None:
+        print("❌ Lỗi: Không tìm thấy VB-CABLE. Vui lòng cài đặt VB-CABLE.")
+        return
+
+    # Khởi tạo luồng phát audio riêng biệt
+    audio_thread = threading.Thread(target=audio_playback_loop, args=(device_id,), daemon=True)
     audio_thread.start()
-    
-    print(f"\n🎙️ WebSocket Server đang chạy tại ws://0.0.0.0:8765")
-    print(f"🔊 Phát audio vào device: [{DEVICE_ID}] {sd.query_devices(DEVICE_ID)['name']}")
-    print("📱 Hãy mở trình duyệt và kết nối...")
-    print("⏹️ Nhấn Ctrl+C để dừng server\n")
-    
-    async with websockets.serve(handle_audio, "0.0.0.0", 8765, ping_interval=None):
-        await asyncio.Future()
+
+    print(f"\nWebSocket Server đang chạy tại: ws://0.0.0.0:8765")
+    async with websockets.serve(handle_audio, "0.0.0.0", 8765):
+        await asyncio.Future() # Giữ server chạy vô thời hạn
 
 if __name__ == "__main__":
     try:
         asyncio.run(main())
     except KeyboardInterrupt:
-        print("\n👋 Đã dừng server")
+        print("\nĐã dừng server")
+    
     except Exception as e:
-        print(f"\n❌ Lỗi: {e}")
-        import traceback
-        traceback.print_exc()
-        
+        print(f"Lỗi: {e}")
+
+    
+    
