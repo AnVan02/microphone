@@ -1,4 +1,4 @@
-# mic_bridge.py - WebSocket Audio Server với quản lý kết nối chặt chẽ
+# mic_bridge_stt.py
 import asyncio
 import websockets
 import numpy as np
@@ -6,10 +6,19 @@ import sounddevice as sd
 import threading
 import time
 import os
-import queue
-import uuid
-import json
-import logging
+import wave
+import io
+
+# ========================
+#  KIỂM TRA SPEECH-TO-TEXT
+# ========================
+try:
+    import speech_recognition as sr
+    SPEECH_RECOGNITION_AVAILABLE = True
+    print("✅ SpeechRecognition đã sẵn sàng")
+except ImportError:
+    SPEECH_RECOGNITION_AVAILABLE = False
+    print("❌ Speech-to-text không khả dụng. Cài đặt: pip install SpeechRecognition pyaudio")
 
 # ========================
 #  CẤU HÌNH
@@ -17,361 +26,273 @@ import logging
 SAMPLE_RATE = 48000
 CHANNELS = 1
 BUFFER_SIZE = int(os.getenv('MIC_BRIDGE_BUFFER', '256'))
-SESSION_TIMEOUT = 300  # 5 phút timeout
-RECONNECT_TIMEOUT = 30  # 30 giây cho phép reconnect
-
-# Cấu hình logging
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(levelname)s - %(message)s',
-    datefmt='%H:%M:%S'
-)
-logger = logging.getLogger(__name__)
+VERBOSE = os.getenv('MIC_BRIDGE_VERBOSE', '1') == '1'
+SAVE_INCOMING = os.getenv('MIC_BRIDGE_SAVE', '0') == '1'
+SAVE_SECONDS = 4
 
 # ========================
-#  QUẢN LÝ KẾT NỐI
+#  BIẾN TOÀN CỤC
 # ========================
-class ConnectionManager:
-    def __init__(self):
-        self.current_connection = None
-        self.session_id = None
-        self.expected_token = None
-        self.last_activity = None
-        self.audio_queue = queue.Queue(maxsize=20)
-        self.active_tokens = set()
-        self.connection_start_time = None
-        
-    def is_connected(self):
-        return self.current_connection is not None and not self.audio_queue.empty()
-    
-    def can_connect(self, session_id, token):
-        """Kiểm tra có thể kết nối không"""
-        if not self.is_connected():
-            return True
-            
-        # Cho phép reconnect với cùng session_id
-        if self.session_id == session_id:
-            return True
-            
-        # Kiểm tra token hợp lệ
-        if token in self.active_tokens:
-            return True
-            
-        return False
-    
-    def register_connection(self, websocket, session_id, token):
-        """Đăng ký kết nối mới"""
-        if self.is_connected() and self.session_id != session_id and token not in self.active_tokens:
-            return False, "Another user is already connected"
-            
-        self.current_connection = websocket
-        self.session_id = session_id
-        self.expected_token = token
-        self.last_activity = time.time()
-        self.connection_start_time = time.time()
-        self.active_tokens.add(token)
-        
-        logger.info(f"✅ Đăng ký kết nối: Session={session_id}, Token={token[:8]}...")
-        return True, "Connection registered successfully"
-    
-    def unregister_connection(self, session_id):
-        """Hủy đăng ký kết nối"""
-        if self.session_id == session_id:
-            logger.info(f"🧹 Hủy đăng ký: Session={session_id}")
-            self.current_connection = None
-            self.session_id = None
-            self.expected_token = None
-            self.connection_start_time = None
-            # Dọn dẹp queue
-            while not self.audio_queue.empty():
-                try:
-                    self.audio_queue.get_nowait()
-                except:
-                    break
-            return True
-        return False
-    
-    def update_activity(self):
-        """Cập nhật thời gian hoạt động"""
-        if self.is_connected():
-            self.last_activity = time.time()
-    
-    def check_timeout(self):
-        """Kiểm tra timeout"""
-        if self.is_connected() and self.last_activity:
-            elapsed = time.time() - self.last_activity
-            if elapsed > SESSION_TIMEOUT:
-                logger.warning(f"⏰ Timeout phiên {self.session_id} sau {elapsed:.1f}s")
-                self.unregister_connection(self.session_id)
-                return True
-        return False
-    
-    def get_connection_info(self):
-        """Lấy thông tin kết nối"""
-        if self.is_connected():
-            elapsed = time.time() - self.connection_start_time
-            last_activity = time.time() - self.last_activity
-            return {
-                'session_id': self.session_id,
-                'connected_time': f"{elapsed:.1f}s",
-                'last_activity': f"{last_activity:.1f}s",
-                'queue_size': self.audio_queue.qsize()
-            }
-        return None
+current_audio_data = None
+is_playing = False
+audio_lock = threading.Lock()
 
-# Khởi tạo manager
-connection_manager = ConnectionManager()
+# Quản lý kết nối
+current_connection = None
+connection_lock = threading.Lock()
+
+# Lưu incoming để debug
+_save_samples_threshold = SAVE_SECONDS * SAMPLE_RATE
+_incoming_chunks = []
+_save_lock = threading.Lock()
+_saved_incoming = False
+
+# Bộ đệm và VAD cho STT
+stt_lock = threading.Lock()
+stt_buffer = np.array([], dtype=np.float32)
+last_voice_time = time.time()
+VAD_THRESHOLD = 0.02       # ngưỡng biên độ coi là nói
+VAD_MIN_SPEECH_MS = 300    # tối thiểu 0.3s để coi là câu nói
+VAD_SILENCE_MS = 800       # khoảng lặng 0.8s để cắt câu
+MAX_STT_BUFFER_SECONDS = 15  # tránh buffer quá dài
+
+recognizer = sr.Recognizer() if SPEECH_RECOGNITION_AVAILABLE else None
 
 # ========================
-#  XỬ LÝ AUDIO
+#  IN DANH SÁCH THIẾT BỊ
+# ========================
+print("📊 Danh sách thiết bị âm thanh:\n")
+for i, d in enumerate(sd.query_devices()):
+    marker = " (VB-CABLE)" if 'cable' in d['name'].lower() else ""
+    print(f"[{i}] {d['name']}{marker}")
+    print(f"    Input: {d['max_input_channels']} | Output: {d['max_output_channels']}\n")
+
+# ========================
+#  CHỌN VB-CABLE TỰ ĐỘNG
+# ========================
+def find_vb_cable():
+    devices = sd.query_devices()
+    for i, d in enumerate(devices):
+        name = d['name'].lower()
+        if 'cable input' in name and d['max_output_channels'] > 0:
+            return i
+    for i, d in enumerate(devices):
+        if d['max_output_channels'] > 0:
+            return i
+    return 0
+
+DEVICE_ID = find_vb_cable()
+print(f"\n📋 HƯỚNG DẪN:")
+print(f"1. Phát âm thanh vào: CABLE Input (device {DEVICE_ID})")
+print(f"2. Trong Chrome/Windows: chọn 'CABLE Output' làm microphone")
+print(f"🎯 Đã chọn: [{DEVICE_ID}] {sd.query_devices(DEVICE_ID)['name']}")
+
+# Kiểm tra thiết bị phát
+try:
+    test_data = np.zeros(512, dtype=np.float32)
+    sd.play(test_data, samplerate=SAMPLE_RATE, device=DEVICE_ID, blocking=False)
+    sd.stop()
+    print("✅ Thiết bị âm thanh hoạt động tốt")
+except Exception as e:
+    print(f"❌ Lỗi thiết bị: {e}")
+    exit(1)
+
+# ========================
+#  TỐI ƯU ÂM THANH
 # ========================
 def optimize_audio_quality(audio_data):
-    """Tối ưu chất lượng audio"""
-    if len(audio_data) == 0:
-        return audio_data
-        
     audio_data = audio_data.astype(np.float32)
-    new_max = np.max(np.abs(audio_data))
-    target_max = 0.9999
-
-    if new_max > 0.01 and new_max < target_max:
-        audio_data = np.clip(audio_data * (target_max / new_max), -1.0, 1.0)
-    
+    max_val = np.max(np.abs(audio_data)) if len(audio_data) > 0 else 0.0
+    if max_val < 0.1 and max_val > 0:
+        audio_data = np.clip(audio_data * 2.0, -1.0, 1.0)
     return audio_data
 
-def audio_playback_loop(device_id):
-    """Luồng phát audio liên tục"""
+# ========================
+#  CHUYỂN BUFFER → TEXT
+# ========================
+def buffer_to_text_and_print(buf: np.ndarray):
+    if not SPEECH_RECOGNITION_AVAILABLE or buf.size == 0:
+        return
+    try:
+        max_samples = int(MAX_STT_BUFFER_SECONDS * SAMPLE_RATE)
+        if buf.size > max_samples:
+            buf = buf[-max_samples:]
+
+        int_data = np.clip(buf, -1.0, 1.0)
+        int_data = (int_data * 32767.0).astype('<i2')
+        wav_bytes = io.BytesIO()
+        with wave.open(wav_bytes, 'wb') as wf:
+            wf.setnchannels(1)
+            wf.setsampwidth(2)
+            wf.setframerate(SAMPLE_RATE)
+            wf.writeframes(int_data.tobytes())
+        wav_bytes.seek(0)
+
+        with sr.AudioFile(wav_bytes) as source:
+            audio = recognizer.record(source)
+            text = recognizer.recognize_google(audio, language="vi-VN")
+            print(f"🗣️ [STT] {text}")
+    except sr.UnknownValueError:
+        if VERBOSE:
+            print("❓ [STT] Không nhận diện được")
+    except sr.RequestError as e:
+        print(f"❌ [STT] Lỗi dịch vụ: {e}")
+    except Exception as e:
+        print(f"❌ [STT] Lỗi xử lý: {e}")
+
+# ========================
+#  VÒNG LẶP PHÁT ÂM THANH
+# ========================
+def audio_playback_loop():
+    global current_audio_data, is_playing
+    print("▶️ Bắt đầu phát âm thanh vào VB-CABLE...")
     try:
         with sd.OutputStream(
             samplerate=SAMPLE_RATE,
             channels=CHANNELS,
             dtype=np.float32,
-            device=device_id,
+            device=DEVICE_ID,
             blocksize=BUFFER_SIZE,
             latency='low'
         ) as stream:
-            logger.info(f"🎵 Luồng phát audio sẵn sàng (Device: {sd.query_devices(device_id)['name']})")
-            
+            print("🔊 Stream sẵn sàng")
             while True:
-                try:
-                    # Kiểm tra timeout
-                    if connection_manager.check_timeout():
-                        time.sleep(0.1)
-                        continue
-                    
-                    if connection_manager.is_connected():
-                        try:
-                            # Lấy audio từ queue
-                            audio_data = connection_manager.audio_queue.get(timeout=0.1)
-                            if audio_data is not None and len(audio_data) > 0:
-                                # Tối ưu và phát audio
-                                optimized = optimize_audio_quality(audio_data)
-                                chunk_size = BUFFER_SIZE
-                                
-                                for i in range(0, len(optimized), chunk_size):
-                                    chunk = optimized[i:i+chunk_size]
-                                    if len(chunk) > 0:
-                                        stream.write(chunk.reshape(-1, 1).astype(np.float32))
-                        except queue.Empty:
-                            # Queue rỗng, phát silence
-                            silence = np.zeros((BUFFER_SIZE, CHANNELS), dtype=np.float32)
-                            stream.write(silence)
-                    else:
-                        # Không có kết nối, phát silence nhẹ
-                        silence = np.zeros((BUFFER_SIZE, CHANNELS), dtype=np.float32)
-                        stream.write(silence)
-                        time.sleep(0.1)
-                        
-                except Exception as e:
-                    logger.error(f"❌ Lỗi phát audio: {e}")
-                    time.sleep(0.01)
-                    
+                with audio_lock:
+                    data = current_audio_data
+                    current_audio_data = None
+                if data is not None and len(data) > 0:
+                    try:
+                        optimized = optimize_audio_quality(data)
+                        audio_to_play = optimized.reshape(-1, 1)
+                        stream.write(audio_to_play.astype(np.float32))
+                        is_playing = True
+                        if VERBOSE:
+                            print(f"📤 Phát: {len(audio_to_play)} mẫu, max: {np.max(np.abs(audio_to_play)):.4f}")
+                    except Exception as e:
+                        print(f"❌ Lỗi phát: {e}")
+                        is_playing = False
+                else:
+                    silence = np.zeros((BUFFER_SIZE, CHANNELS), dtype=np.float32)
+                    stream.write(silence)
+                    is_playing = False
+                time.sleep(0.001)
     except Exception as e:
-        logger.error(f"❌ Lỗi khởi tạo audio stream: {e}")
+        print(f"❌ Lỗi stream: {e}")
+
+# ========================
+#  XỬ LÝ STT THEO VAD
+# ========================
+def stt_ingest_and_maybe_decode(audio_chunk: np.ndarray):
+    global stt_buffer, last_voice_time
+    now = time.time()
+    
+    with stt_lock:
+        if audio_chunk.size > 0:
+            stt_buffer = np.concatenate([stt_buffer, audio_chunk])
+    amp = np.max(np.abs(audio_chunk)) if audio_chunk.size > 0 else 0.0
+    if amp >= VAD_THRESHOLD:
+        last_voice_time = now
+    silence_ms = (now - last_voice_time) * 1000.0
+    buf_len_ms = (stt_buffer.size / SAMPLE_RATE) * 1000.0
+
+    if silence_ms >= VAD_SILENCE_MS and buf_len_ms >= VAD_MIN_SPEECH_MS:
+        with stt_lock:
+            buf = stt_buffer.copy()
+            stt_buffer = np.array([], dtype=np.float32)
+        buffer_to_text_and_print(buf)
 
 # ========================
 #  WEBSOCKET HANDLER
 # ========================
 async def handle_audio(websocket):
-    """Xử lý kết nối WebSocket"""
-    session_id = str(uuid.uuid4())[:8]
-    remote_addr = f"{websocket.remote_address[0]}:{websocket.remote_address[1]}"
+    global current_audio_data, _incoming_chunks, _saved_incoming, current_connection
     
-    logger.info(f"🔗 Thử kết nối từ: {remote_addr} (Session: {session_id})")
+    client_addr = websocket.remote_address
+    print(f"🔗 Client thử kết nối: {client_addr}")
     
+    # Kiểm tra nếu đã có kết nối
+    with connection_lock:
+        if current_connection is not None and current_connection.open:
+            print(f"⛔ TỪ CHỐI: Đã có kết nối từ {current_connection.remote_address}")
+            print(f"   Client {client_addr} bị từ chối (chỉ cho phép 1 kết nối)")
+            await websocket.close(1008, "Chỉ cho phép một kết nối. Đã có người dùng khác.")
+            return
+        
+        current_connection = websocket
+        print(f"✅ CHẤP NHẬN: Kết nối từ {client_addr}")
+        print(f"   Đang chờ nhận âm thanh...")
+
+
     try:
-        # Đọc message đầu tiên (chứa token)
-        initial_message = await asyncio.wait_for(websocket.recv(), timeout=10.0)
+        await websocket.send("CONNECTED")
         
-        if isinstance(initial_message, str) and initial_message.startswith('AUTH:'):
-            token = initial_message.replace('AUTH:', '')
-            
-            # Kiểm tra có thể kết nối
-            if not connection_manager.can_connect(session_id, token):
-                rejection_msg = json.dumps({
-                    'type': 'CONNECTION_REFUSED',
-                    'message': 'Another user is already connected. Please try again later.'
-                })
-                await websocket.send(rejection_msg)
-                await websocket.close()
-                logger.warning(f"🚫 Từ chối kết nối: {remote_addr} - Đã có user khác")
-                return
-            
-            # Đăng ký kết nối
-            success, message = connection_manager.register_connection(websocket, session_id, token)
-            if not success:
-                rejection_msg = json.dumps({
-                    'type': 'CONNECTION_REFUSED', 
-                    'message': message
-                })
-                await websocket.send(rejection_msg)
-                await websocket.close()
-                return
-            
-            # Gửi xác nhận kết nối thành công
-            welcome_msg = json.dumps({
-                'type': 'CONNECTION_ACCEPTED',
-                'session_id': session_id,
-                'message': 'Connected successfully. You can now send audio data.'
-            })
-            await websocket.send(welcome_msg)
-            logger.info(f"✅ Chấp nhận kết nối: {remote_addr} (Session: {session_id})")
-            
-            # Xử lý audio data
-            async for message in websocket:
-                connection_manager.update_activity()
-                
-                # Xử lý message JSON (control messages)
-                if isinstance(message, str) and message.startswith('{'):
-                    try:
-                        data = json.loads(message)
-                        if data.get('type') == 'HEARTBEAT':
-                            # Phản hồi heartbeat
-                            response = json.dumps({'type': 'HEARTBEAT_ACK', 'timestamp': time.time()})
-                            await websocket.send(response)
-                        continue
-                    except json.JSONDecodeError:
-                        pass
-                
-                # Xử lý audio data binary
+        async for message in websocket:
+            try:
                 audio_data = np.frombuffer(message, dtype=np.float32)
-                
-                # Chuyển stereo sang mono nếu cần
-                if len(audio_data) > 0 and len(audio_data) % 2 == 0:
-                    audio_data = audio_data[::2]
-                
-                # Đưa vào queue để phát
-                try:
-                    connection_manager.audio_queue.put_nowait(audio_data)
-                except queue.Full:
-                    # Queue đầy, bỏ qua frame này
-                    pass
-                    
-        else:
-            # Message đầu tiên không hợp lệ
-            await websocket.close()
-            logger.warning(f"🚫 Message đầu tiên không hợp lệ từ: {remote_addr}")
-            
-    except asyncio.TimeoutError:
-        logger.warning(f"⏰ Timeout chờ auth từ: {remote_addr}")
-        await websocket.close()
-    except websockets.exceptions.ConnectionClosed:
-        logger.info(f"⚠️ Ngắt kết nối: {remote_addr} (Session: {session_id})")
+
+                if VERBOSE and audio_data.size > 0:
+                    print(f"📡 Nhận từ {client_addr}: {len(audio_data)} mẫu, âm lượng: {np.max(np.abs(audio_data)):.4f}")
+
+                with audio_lock:
+                    current_audio_data = audio_data
+
+                if SAVE_INCOMING and not _saved_incoming:
+                    with _save_lock:
+                        chunk = audio_data.copy()
+                        _incoming_chunks.append(chunk)
+                        total = sum(len(c) for c in _incoming_chunks)
+                        if total >= _save_samples_threshold:
+                            combined = np.concatenate(_incoming_chunks)
+                            combined = np.clip(combined, -1.0, 1.0)
+                            int_data = (combined * 32767).astype('<i2')
+                            with wave.open('incoming_debug.wav', 'wb') as wf:
+                                wf.setnchannels(1)
+                                wf.setsampwidth(2)
+                                wf.setframerate(SAMPLE_RATE)
+                                wf.writeframes(int_data.tobytes())
+                            print("💾 Đã lưu: incoming_debug.wav")
+                            _saved_incoming = True
+
+                stt_ingest_and_maybe_decode(audio_data)
+
+            except Exception as e:
+                print(f"❌ Lỗi xử lý từ {client_addr}: {e}")
+    except websockets.exceptions.ConnectionClosed as e:
+        print(f"🔌 Client ngắt kết nối: {client_addr} (code: {e.code})")
     except Exception as e:
-        logger.error(f"❌ Lỗi xử lý WebSocket: {e}")
+        print(f"❌ Lỗi WebSocket từ {client_addr}: {e}")
     finally:
-        # Dọn dẹp kết nối
-        connection_manager.unregister_connection(session_id)
-        logger.info(f"🧹 Đã dọn dẹp phiên {session_id}. Sẵn sàng cho kết nối mới.")
-
-# ========================
-#  TIMEOUT CHECKER
-# ========================
-async def timeout_checker():
-    """Định kỳ kiểm tra timeout"""
-    while True:
-        try:
-            connection_manager.check_timeout()
-            
-            # Log trạng thái mỗi 30s
-            info = connection_manager.get_connection_info()
-            if info:
-                logger.info(f"📊 Trạng thái: {info}")
-            else:
-                logger.info("📊 Trạng thái: Đang chờ kết nối...")
-                
-        except Exception as e:
-            logger.error(f"❌ Lỗi timeout checker: {e}")
+        with connection_lock:
+            if current_connection == websocket:
+                current_connection = None
+                print(f"🔄 Đã giải phóng kết nối từ {client_addr}, sẵn sàng cho kết nối mới")
         
-        await asyncio.sleep(10)
-
-# ========================
-#  TÌM VB-CABLE
-# ========================
-def find_vb_cable():
-    """Tìm thiết bị VB-CABLE"""
-    devices = sd.query_devices()
-    for i, d in enumerate(devices):
-        if 'cable input' in d['name'].lower() and d['max_output_channels'] > 0:
-            logger.info(f"🎯 Tìm thấy VB-CABLE: {d['name']} (ID: {i})")
-            return i
-    
-    # Thử tìm các thiết bị cable khác
-    for i, d in enumerate(devices):
-        if 'cable' in d['name'].lower() and d['max_output_channels'] > 0:
-            logger.info(f"🎯 Tìm thấy audio cable: {d['name']} (ID: {i})")
-            return i
-            
-    logger.error("❌ Không tìm thấy VB-CABLE hoặc audio cable tương tự")
-    return None
+        with audio_lock:
+            current_audio_data = None
+        
+        with stt_lock:
+            buf = stt_buffer.copy()
+            stt_buffer = np.array([], dtype=np.float32)
+        
+        if buf.size > 0:
+            buffer_to_text_and_print(buf)
+        
+        print(f"✅ Đã dọn dẹp kết nối từ {client_addr}")
 
 # ========================
 #  MAIN SERVER
 # ========================
 async def main():
-    """Khởi chạy server chính"""
-    device_id = find_vb_cable()
-    if device_id is None:
-        logger.error("❌ Không tìm thấy VB-CABLE. Vui lòng cài đặt VB-CABLE trước.")
-        return
-
-    # Khởi động luồng phát audio
-    audio_thread = threading.Thread(
-        target=audio_playback_loop, 
-        args=(device_id,), 
-        daemon=True,
-        name="AudioPlaybackThread"
-    )
+    audio_thread = threading.Thread(target=audio_playback_loop, daemon=True)
     audio_thread.start()
-    logger.info("🎵 Đã khởi động luồng phát audio")
 
-    # Khởi động timeout checker
-    asyncio.create_task(timeout_checker())
-    logger.info("⏰ Đã khởi động timeout checker")
+    print(f"\n🌐 WebSocket Server: ws://0.0.0.0:8765")
+    print(f"🔊 Phát vào: [{DEVICE_ID}] {sd.query_devices(DEVICE_ID)['name']}")
+    print("📱 Mở trình duyệt → kết nối từ điện thoại")
+    print("🛑 Ctrl+C để dừng\n")
 
-    # Khởi động WebSocket server
-    server = await websockets.serve(
-        handle_audio, 
-        "0.0.0.0", 
-        8765,
-        ping_interval=20,
-        ping_timeout=10
-    )
-
-    logger.info("🚀 WebSocket Audio Server đã khởi động!")
-    logger.info(f"📍 Địa chỉ: ws://0.0.0.0:8765")
-    logger.info(f"⏰ Timeout: {SESSION_TIMEOUT} giây")
-    logger.info(f"🎯 VB-CABLE: {sd.query_devices(device_id)['name']}")
-    logger.info("=" * 50)
-
-    try:
-        await asyncio.Future()  # Chạy vô hạn
-    except KeyboardInterrupt:
-        logger.info("🛑 Nhận tín hiệu dừng...")
-    finally:
-        server.close()
-        await server.wait_closed()
-        logger.info("👋 Server đã dừng")
+    async with websockets.serve(handle_audio, "0.0.0.0", 8765, ping_interval=20, ping_timeout=10):
+        await asyncio.Future()
 
 if __name__ == "__main__":
     try:
@@ -379,4 +300,7 @@ if __name__ == "__main__":
     except KeyboardInterrupt:
         print("\n🛑 Đã dừng server")
     except Exception as e:
-        logger.error(f"❌ Lỗi khởi chạy server: {e}")
+        print(f"❌ Lỗi: {e}")
+        import traceback
+        traceback.print_exc()
+    

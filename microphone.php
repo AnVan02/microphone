@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>🎙️ Mic Qua Mạng </title>
+    <title>🎙️ Mic Qua Mạng</title>
     <script src="https://unpkg.com/peerjs@1.4.7/dist/peerjs.min.js"></script>
     <script src="https://cdn.jsdelivr.net/gh/davidshimjs/qrcodejs/qrcode.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js"></script>
@@ -114,7 +114,7 @@
         .status.info {
             background: #fffbeb;
             color: #92400e;
-            border-color: #fbbF24;
+            border-color: #fbbf24;
         }
 
         .status.connected {
@@ -139,6 +139,19 @@
             margin-top: 20px;
             min-height: 290px;
             flex-direction: column;
+        }
+
+        .qr-info {
+            margin-top: 10px;
+            font-size: 14px;
+            color: #718096;
+        }
+
+        .qr-timer {
+            margin-top: 5px;
+            font-size: 13px;
+            color: #e53e3e;
+            font-weight: 600;
         }
 
         #visualizer-container {
@@ -229,36 +242,22 @@
             text-align: left;
         }
 
-        .visualizer-label {
-            font-size: 12px;
-            color: #718096;
-            margin-bottom: 5px;
-            text-align: center;
-        }
-
-        .visualizer-pulse {
-            animation: pulse 1.5s infinite;
-        }
-
-        @keyframes pulse {
-            0% {
-                opacity: 0.7;
-            }
-
-            50% {
-                opacity: 1;
-            }
-
-            100% {
-                opacity: 0.7;
-            }
+        .timeout-timer {
+            background: #fff5f5;
+            padding: 8px;
+            border-radius: 6px;
+            margin: 10px 0;
+            font-size: 13px;
+            color: #c53030;
+            font-weight: 600;
+            border-left: 4px solid #fc8181;
         }
     </style>
 </head>
 
 <body>
     <div class="container">
-        <h1>🎙️ Mic Qua Mạng </h1>
+        <h1>🎙️ Mic Qua Mạng</h1>
 
         <!-- ĐIỆN THOẠI (GỬI) -->
         <div id="senderDiv" class="hidden">
@@ -266,6 +265,7 @@
                 <div class="info">Quét mã QR trên máy tính để kết nối điện thoại làm micro.</div>
                 <div id="scanner-container" class="hidden">
                     <video id="qr-video" playsinline></video>
+                    <canvas id="qr-canvas"></canvas>
                     <div class="scanner-overlay">
                         <div class="scanner-line"></div>
                     </div>
@@ -280,16 +280,19 @@
             </div>
 
             <div id="sender-auto-view" class="hidden">
-                <button class="btn btn-primary" id="connectBtn"> Kết nối với Máy tính</button>
+                <button class="btn btn-primary" id="connectBtn">Kết nối với Máy tính</button>
                 <div class="token-info" id="senderTokenInfo"></div>
             </div>
 
             <div id="sender-connected-view" class="hidden">
-                <div class="connection-stats" id="senderStats">
-                    Đang thiết lập kết nối...
+                <div id="timeoutTimerSender" class="timeout-timer hidden">
+                    ⏰ Tự động ngắt sau: <span id="timeoutCountdownSender">05:00</span>
                 </div>
 
-                <div class="visualizer-label">🎤 MIC ĐIỆN THOẠI</div>
+                <div class="connection-stats" id="senderStats">
+                    Đang kết nối...
+                </div>
+
                 <div id="visualizer-container">
                     <canvas id="visualizer"></canvas>
                 </div>
@@ -297,7 +300,7 @@
                 <hr style="margin: 15px 0; border: 1px solid #e2e8f0;">
                 <button id="disconnectBtnSender" class="btn btn-danger" onclick="disconnect()">🔴 Ngắt kết nối</button>
             </div>
-            <div id="senderStatus" class="status"></div>
+            <div id="senderStatus"></div>
         </div>
 
         <!-- MÁY TÍNH (NHẬN) -->
@@ -313,17 +316,25 @@
                     <p>Đang tạo mã QR...</p>
                 </div>
 
-                <div class="token-info" id="receiverTokenInfo">
-                    Mỗi QR code chỉ sử dụng được một lần
+                <div class="qr-info">
+                    <div id="qrTokenInfo">Đang tạo token...</div>
+                    <div id="qrTimer" class="qr-timer"></div>
+                </div>
+
+                <div class="token-info">
+                    Mỗi QR code chỉ sử dụng được một lần, tự động thay đổi mỗi 1 phút
                 </div>
             </div>
 
             <div id="receiver-connected-view" class="hidden">
-                <div class="connection-stats" id="receiverStats">
-                    Đang thiết lập kết nối âm thanh...
+                <div id="timeoutTimerReceiver" class="timeout-timer hidden">
+                    ⏰ Tự động ngắt sau: <span id="timeoutCountdownReceiver">05:00</span>
                 </div>
 
-                <div class="visualizer-label">🔊 ÂM THANH NHẬN ĐƯỢC</div>
+                <div class="connection-stats" id="receiverStats">
+                    Đang nhận âm thanh từ điện thoại...
+                </div>
+
                 <div id="visualizer-receiver-container">
                     <canvas id="visualizer-receiver"></canvas>
                 </div>
@@ -331,11 +342,7 @@
                 <div class="info">
                     ✅ <strong>Đã kết nối thành công!</strong><br>
                     - Âm thanh đang được gửi đến Python<br>
-                </div>
-
-                <div class="info" style="font-size: 12px; margin-top: 20px; background: #fff5f5;">
-                    💡 <strong>Lưu ý quan trọng:</strong> Để sử dụng làm micro hệ thống,
-                    bạn cần cài đặt VB-CABLE và định tuyến âm thanh từ trình duyệt vào thiết bị ảo.
+                    - Phiên kết nối sẽ tự động kết thúc sau 5 phút
                 </div>
 
                 <hr style="margin: 15px 0; border: 1px solid #e2e8f0;">
@@ -343,7 +350,7 @@
                     🔴 Ngắt kết nối
                 </button>
             </div>
-            <div id="receiverStatus" class="status"></div>
+            <div id="receiverStatus"></div>
         </div>
     </div>
 
@@ -358,17 +365,18 @@
             audioContext: null,
             analyser: null,
             visualizerFrameId: null,
-            remoteAudioContext: null,
-            remoteAnalyser: null,
-            remoteVisualizerFrameId: null,
             ws: null,
             currentToken: null,
             sessionId: null,
             heartbeatInterval: null,
             qrRotateInterval: null,
-            qrVideo: null,
-            isVisualizerActive: false,
-            isRemoteVisualizerActive: false
+            timeoutTimer: null,
+            timeoutSeconds: 300, // 5 phút
+            timeoutInterval: null,
+            lastAudioActivity: Date.now(),
+            audioActivityCheckInterval: null,
+            isMobile: /iPhone|iPad|iPod|Android/i.test(navigator.userAgent),
+            isSecondPhoneConnected: false
         };
 
         const PEER_CONFIG = {
@@ -378,13 +386,11 @@
             path: '/'
         };
 
-        const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
-
         // ========================================
         // 🚀 KHỞI TẠO ỨNG DỤNG
         // ========================================
         document.addEventListener('DOMContentLoaded', () => {
-            if (isMobile) {
+            if (app.isMobile) {
                 document.getElementById('senderDiv').classList.remove('hidden');
                 initializeSender();
             } else {
@@ -397,17 +403,13 @@
         // 💻 MÁY TÍNH - RECEIVER
         // ========================================
         function initializeReceiver() {
-            if (app.peer) {
-                app.peer.destroy();
-                app.peer = null;
-            }
+            if (app.peer) app.peer.destroy();
 
             showStatus('receiver', 'Đang kết nối đến máy chủ PeerJS...', 'info');
             app.peer = new Peer(PEER_CONFIG);
 
             app.peer.on('open', id => {
-                console.log('✅ PeerJS Receiver ID:', id);
-                showStatus('receiver', `✅ Sẵn sàng! ID: ${id.substring(0, 8)}...`, 'info');
+                showStatus('receiver', `✅ Sẵn sàng! ID: ${id}`, 'info');
                 generateNewQRCode();
                 startQrRotation();
             });
@@ -417,9 +419,22 @@
                 if (app.currentCall && app.currentCall.open) {
                     showStatus('receiver', '⚠️ Máy tính đang bận. Vui lòng thử lại sau.', 'info');
                     console.log('❌ Từ chối cuộc gọi - đã có cuộc gọi khác hoạt động');
+
+                    // Gửi thông báo lỗi về điện thoại thứ 2
                     try {
                         call.close();
-                    } catch (e) {}
+                        // Tạo một kênh data để gửi thông báo lỗi
+                        const dataConnection = app.peer.connect(call.peer);
+                        dataConnection.on('open', () => {
+                            dataConnection.send({
+                                type: 'ERROR',
+                                message: 'Máy tính đã có điện thoại khác kết nối. Vui lòng thử lại sau.'
+                            });
+                            setTimeout(() => dataConnection.close(), 1000);
+                        });
+                    } catch (e) {
+                        console.error('Lỗi khi từ chối cuộc gọi:', e);
+                    }
                     return;
                 }
 
@@ -429,106 +444,88 @@
                 call.answer();
 
                 call.on('stream', remoteStream => {
-                    console.log('✅ Nhận được audio stream từ điện thoại');
-
                     const remoteAudio = document.getElementById('remoteAudio');
                     remoteAudio.srcObject = remoteStream;
 
-                    // Ẩn QR và hiển thị view đã kết nối
-                    try {
-                        onReceiverConnectionSuccess();
-                    } catch (e) {
-                        console.error('Lỗi khi hiển thị receiver connected view:', e);
-                    }
+                    onReceiverConnectionSuccess();
 
-                    // ĐỢI audio thực sự có dữ liệu trước khi bật visualizer
-                    setTimeout(() => {
-                        checkAudioActivity(remoteStream).then(hasAudio => {
-                            if (hasAudio) {
-                                console.log('✅ Phát hiện âm thanh từ điện thoại');
-                                updateReceiverStats('✅ Đang nhận âm thanh từ điện thoại...');
+                    // Bắt đầu kiểm tra hoạt động âm thanh
+                    startAudioActivityCheck(remoteStream);
+
+                    // Chờ audio thực sự xuất hiện trước khi bật visualizer
+                    waitForAudioActivity(remoteStream, 0.015, 150, 3000).then(active => {
+                        if (active) {
+                            try {
                                 startRemoteVisualizer(remoteStream);
-                            } else {
-                                console.log('⚠️ Chưa nhận được âm thanh từ điện thoại');
-                                updateReceiverStats('🔇 Chưa phát hiện âm thanh - hãy nói thử vào điện thoại');
-                                // Vẫn bật visualizer nhưng với thanh tĩnh
-                                startRemoteVisualizer(remoteStream);
+                            } catch (e) {
+                                console.error('Remote visualizer error', e);
                             }
-                        });
-                    }, 500);
+                        } else {
+                            console.log('Không phát hiện âm thanh trong thời gian chờ');
+                        }
+                    });
 
                     connectWebSocketAndMix(remoteStream);
+
+                    // Bắt đầu đếm ngược timeout
+                    startTimeoutTimer();
                 });
 
                 call.on('close', () => {
-                    console.log('🚫 Cuộc gọi đã đóng');
                     showStatus('receiver', '🚫 Điện thoại đã ngắt kết nối.', 'info');
                     cleanupReceiverConnection();
                 });
 
                 call.on('error', err => {
-                    console.error('❌ Lỗi cuộc gọi:', err);
-                    showStatus('receiver', `❌ Lỗi kết nối: ${err.message || err}`, 'error');
+                    showStatus('receiver', `❌ Lỗi kết nối: ${err.message}`, 'error');
                     cleanupReceiverConnection();
                 });
             });
 
             app.peer.on('error', err => {
-                console.error('❌ Lỗi PeerJS receiver:', err);
-                showStatus('receiver', `❌ Lỗi PeerJS: ${err.message || err}`, 'error');
+                showStatus('receiver', `❌ Lỗi PeerJS: ${err.message}`, 'error');
             });
         }
 
         function onReceiverConnectionSuccess() {
-            // Ẩn view ban đầu, hiển thị view đã kết nối
             document.getElementById('receiver-initial-view').classList.add('hidden');
             document.getElementById('receiver-connected-view').classList.remove('hidden');
 
-            // Dừng xoay QR tự động
-            stopQrRotation();
+            // Hiển thị bộ đếm timeout
+            document.getElementById('timeoutTimerReceiver').classList.remove('hidden');
 
-            // Tạo QR code mới cho lượt kết nối tiếp theo
+            // Tạo QR mới cho lượt tiếp theo
             generateNewQRCode();
 
-            showStatus('receiver', '✅ Đã kết nối với điện thoại!', 'connected');
+            showStatus('receiver', '✅ Đã kết nối! QR code mới đã được tạo.', 'connected');
         }
 
         function cleanupReceiverConnection() {
-            console.log('🧹 Dọn dẹp kết nối receiver');
+            // Dừng tất cả bộ đếm và interval
+            stopTimeoutTimer();
+            stopAudioActivityCheck();
+            stopQrRotation();
 
-            // Đóng WebSocket
             if (app.ws) {
                 app.ws.close();
                 app.ws = null;
             }
 
-            // Dừng heartbeat
             if (app.heartbeatInterval) {
                 clearInterval(app.heartbeatInterval);
                 app.heartbeatInterval = null;
             }
 
-            // Dừng visualizer remote
-            stopRemoteVisualizer();
-
-            // Dừng remote audio
-            const remoteAudio = document.getElementById('remoteAudio');
-            if (remoteAudio && remoteAudio.srcObject) {
-                try {
-                    remoteAudio.srcObject.getTracks().forEach(track => track.stop());
-                    remoteAudio.srcObject = null;
-                } catch (e) {}
-            }
-
-            // Xoá reference cuộc gọi cũ
             if (app.currentCall) {
-                try {
-                    app.currentCall.close();
-                } catch (e) {}
+                app.currentCall.close();
                 app.currentCall = null;
             }
 
-            // Tạo QR code mới
+            try {
+                stopRemoteVisualizer();
+            } catch (e) {}
+
+            // Tạo QR mới
             setTimeout(() => {
                 generateNewQRCode();
                 startQrRotation();
@@ -541,16 +538,17 @@
         function resetReceiverUI() {
             document.getElementById('receiver-initial-view').classList.remove('hidden');
             document.getElementById('receiver-connected-view').classList.add('hidden');
+            document.getElementById('timeoutTimerReceiver').classList.add('hidden');
+            document.getElementById('receiverStatus').innerHTML = '';
 
-            const receiverStatus = document.getElementById('receiverStatus');
-            if (receiverStatus) {
-                receiverStatus.innerHTML = '';
-                receiverStatus.className = 'status';
+            const remoteAudio = document.getElementById('remoteAudio');
+            if (remoteAudio.srcObject) {
+                remoteAudio.srcObject.getTracks().forEach(track => track.stop());
+                remoteAudio.srcObject = null;
             }
         }
 
         function disconnectReceiver() {
-            console.log('🔴 Người dùng yêu cầu ngắt kết nối receiver');
             cleanupReceiverConnection();
         }
 
@@ -558,9 +556,6 @@
         // 🔗 KẾT NỐI WEBSOCKET VÀ GỬI AUDIO
         // ========================================
         function connectWebSocketAndMix(remoteStream) {
-            console.log('🔄 Đang thiết lập WebSocket và mix audio...');
-
-            // Chỉ lấy microphone máy tính nếu cần mix
             navigator.mediaDevices.getUserMedia({
                 audio: {
                     channelCount: 1,
@@ -576,35 +571,30 @@
                     sampleRate: 48000
                 });
 
-                // Tạo nguồn âm thanh
                 const remoteSource = audioContext.createMediaStreamSource(remoteStream);
                 const localSource = audioContext.createMediaStreamSource(localStream);
 
-                // Điều chỉnh âm lượng
                 const remoteGain = audioContext.createGain();
                 remoteGain.gain.value = 1.0;
                 const localGain = audioContext.createGain();
-                localGain.gain.value = 0.0; // Tắt microphone máy tính mặc định
+                localGain.gain.value = 1.0;
 
                 remoteSource.connect(remoteGain);
                 localSource.connect(localGain);
 
-                // Merge thành stereo
                 const merger = audioContext.createChannelMerger(2);
                 remoteGain.connect(merger, 0, 0);
                 localGain.connect(merger, 0, 1);
 
-                // Xử lý audio
                 const processor = audioContext.createScriptProcessor(4096, 2, 2);
                 merger.connect(processor);
 
-                // Mute loa
                 const gainNode = audioContext.createGain();
                 gainNode.gain.value = 0;
                 processor.connect(gainNode);
                 gainNode.connect(audioContext.destination);
 
-                // Kết nối WebSocket với AUTH
+                // Kết nối WebSocket
                 console.log("🔄 Đang kết nối WebSocket...");
                 app.ws = new WebSocket("ws://localhost:8765");
                 app.ws.binaryType = "arraybuffer";
@@ -612,13 +602,9 @@
                 app.ws.onopen = () => {
                     console.log("✅ WebSocket đã kết nối!");
 
-                    // GỬI TOKEN ĐẦU TIÊN để xác thực
                     const authMessage = `AUTH:${app.currentToken}`;
                     app.ws.send(authMessage);
 
-                    updateReceiverStats('✅ Đang gửi âm thanh đến Python...');
-
-                    // Bắt đầu gửi audio sau khi auth
                     processor.onaudioprocess = (event) => {
                         if (app.ws && app.ws.readyState === WebSocket.OPEN) {
                             try {
@@ -638,7 +624,6 @@
                         }
                     };
 
-                    // Heartbeat
                     app.heartbeatInterval = setInterval(() => {
                         if (app.ws && app.ws.readyState === WebSocket.OPEN) {
                             const heartbeat = JSON.stringify({
@@ -661,7 +646,7 @@
                                 case 'CONNECTION_ACCEPTED':
                                     showStatus('receiver', '✅ Đã kết nối đến Python server!', 'connected');
                                     app.sessionId = data.session_id;
-                                    updateReceiverStats('✅ Đang gửi âm thanh đến Python...');
+                                    updateReceiverStats('Đang gửi âm thanh...');
                                     break;
 
                                 case 'CONNECTION_REFUSED':
@@ -670,7 +655,7 @@
                                     break;
 
                                 case 'HEARTBEAT_ACK':
-                                    updateReceiverStats(`✅ Kết nối ổn định - ${new Date().toLocaleTimeString()}`);
+                                    updateReceiverStats(`Kết nối ổn định - ${new Date().toLocaleTimeString()}`);
                                     break;
                             }
                         }
@@ -684,7 +669,6 @@
                     if (app.heartbeatInterval) {
                         clearInterval(app.heartbeatInterval);
                     }
-                    updateReceiverStats('🔌 Mất kết nối Python server');
                 };
 
                 app.ws.onerror = (error) => {
@@ -693,9 +677,8 @@
                 };
 
             }).catch(err => {
-                console.error("❌ Lỗi truy cập microphone máy tính:", err);
-                // Vẫn tiếp tục với remote stream nếu không lấy được microphone máy tính
-                updateReceiverStats('⚠️ Không thể truy cập micro máy tính, chỉ gửi âm thanh từ điện thoại');
+                console.error("❌ Lỗi truy cập microphone:", err);
+                showStatus('receiver', '❌ Không thể truy cập micro máy tính', 'error');
             });
         }
 
@@ -703,11 +686,6 @@
         // 📱 ĐIỆN THOẠI - SENDER
         // ========================================
         function initializeSender() {
-            console.log('📱 Khởi tạo sender (điện thoại)');
-
-            // Dừng mọi visualizer đang chạy
-            stopVisualizer();
-
             const urlParams = new URLSearchParams(window.location.search);
             const token = urlParams.get('token');
             const peerId = urlParams.get('peer');
@@ -728,18 +706,11 @@
                 document.getElementById('sender-auto-view').classList.add('hidden');
                 initializeQRScanner();
             }
-
-            // Đảm bảo visualizer tắt khi khởi tạo
-            clearVisualizerCanvas('visualizer');
         }
 
         async function connectToReceiver(receiverId, token) {
             try {
-                showStatus('sender', '🎤 Đang xin quyền micro...', 'info');
-
-                // Dừng visualizer trước khi bắt đầu
-                stopVisualizer();
-
+                showStatus('sender', 'Đang xin quyền micro...', 'info');
                 app.localStream = await navigator.mediaDevices.getUserMedia({
                     audio: {
                         channelCount: 1,
@@ -751,51 +722,41 @@
                     video: false
                 });
 
-                showStatus('sender', '📡 Đang kết nối đến máy tính...', 'info');
+                showStatus('sender', 'Đang kết nối đến máy tính...', 'info');
 
-                // Xóa canvas visualizer
-                clearVisualizerCanvas('visualizer');
-
-                if (app.peer) {
-                    app.peer.destroy();
-                }
-
+                if (app.peer) app.peer.destroy();
                 app.peer = new Peer(PEER_CONFIG);
 
+                // Lắng nghe thông báo lỗi từ máy tính
+                app.peer.on('connection', (dataConnection) => {
+                    dataConnection.on('data', (data) => {
+                        if (data.type === 'ERROR') {
+                            showStatus('sender', `❌ ${data.message}`, 'error');
+                            setTimeout(() => {
+                                window.location.href = window.location.pathname;
+                            }, 3000);
+                        }
+                    });
+                });
+
                 app.peer.on('open', () => {
-                    console.log('✅ PeerJS Sender mở, đang gọi đến:', receiverId);
                     const call = app.peer.call(receiverId, app.localStream);
                     app.currentCall = call;
 
-                    updateSenderStats('📞 Đang gọi đến máy tính...');
+                    onSenderConnectionSuccess();
 
                     call.on('stream', remoteStream => {
-                        console.log('✅ Nhận được remote stream từ máy tính');
-                        onSenderConnectionSuccess();
-
-                        // Kiểm tra audio activity
-                        setTimeout(() => {
-                            checkAudioActivity(app.localStream).then(hasAudio => {
-                                if (hasAudio) {
-                                    console.log('✅ Phát hiện âm thanh từ micro điện thoại');
-                                    updateSenderStats('✅ Đang gửi âm thanh...');
-                                } else {
-                                    console.log('⚠️ Micro im lặng');
-                                    updateSenderStats('🔇 Micro im lặng - hãy nói thử');
-                                }
-                            });
-                        }, 500);
+                        // Bắt đầu kiểm tra hoạt động âm thanh
+                        startAudioActivityCheck(remoteStream);
                     });
 
                     call.on('close', () => {
-                        console.log('🚫 Cuộc gọi đã đóng');
                         showStatus('sender', '🚫 Máy tính đã ngắt kết nối.', 'info');
                         exitAppOnDisconnect();
                     });
 
                     call.on('error', (err) => {
-                        console.error('❌ Lỗi cuộc gọi:', err);
-                        showStatus('sender', `❌ Lỗi kết nối: ${err.message || err}`, 'error');
+                        showStatus('sender', `❌ Lỗi kết nối: ${err.message}`, 'error');
                         setTimeout(() => {
                             exitAppOnDisconnect();
                         }, 2000);
@@ -803,15 +764,13 @@
                 });
 
                 app.peer.on('error', err => {
-                    console.error('❌ Lỗi PeerJS sender:', err);
-                    showStatus('sender', `❌ Lỗi PeerJS: ${err.message || err}`, 'error');
+                    showStatus('sender', `❌ Lỗi PeerJS: ${err.message}`, 'error');
                     setTimeout(() => {
                         exitAppOnDisconnect();
                     }, 2000);
                 });
 
             } catch (err) {
-                console.error('❌ Lỗi khi kết nối:', err);
                 let message = `❌ Lỗi: ${err.message}`;
                 if (err.name === 'NotAllowedError') {
                     message = '❌ Từ chối quyền micro. Vui lòng cấp quyền để tiếp tục.';
@@ -824,24 +783,210 @@
         }
 
         function onSenderConnectionSuccess() {
-            console.log('✅ Sender kết nối thành công');
-
             document.getElementById('sender-auto-view').classList.add('hidden');
             document.getElementById('sender-connected-view').classList.remove('hidden');
-            showStatus('sender', '✅ Đã kết nối với máy tính!', 'connected');
+            document.getElementById('timeoutTimerSender').classList.remove('hidden');
 
-            // Bắt đầu visualizer
+            showStatus('sender', '✅ Đã kết nối! Đang gửi âm thanh...', 'connected');
             startVisualizer();
-            updateSenderStats('✅ Đã kết nối, đang gửi âm thanh...');
+            updateSenderStats('Đang gửi âm thanh...');
+
+            // Bắt đầu đếm ngược timeout
+            startTimeoutTimer();
+        }
+
+        // ========================================
+        // ⏰ TIMEOUT SYSTEM (5 PHÚT)
+        // ========================================
+        function startTimeoutTimer() {
+            stopTimeoutTimer();
+
+            // Reset thời gian timeout
+            app.timeoutSeconds = 300; // 5 phút
+            app.lastAudioActivity = Date.now();
+
+            // Cập nhật giao diện
+            updateTimeoutDisplay();
+
+            // Bắt đầu đếm ngược
+            app.timeoutInterval = setInterval(() => {
+                app.timeoutSeconds--;
+                updateTimeoutDisplay();
+
+                if (app.timeoutSeconds <= 0) {
+                    // Tự động ngắt kết nối khi hết giờ
+                    showStatus(app.isMobile ? 'sender' : 'receiver',
+                        '⏰ Hết thời gian kết nối (5 phút)', 'info');
+                    if (app.isMobile) {
+                        disconnect();
+                    } else {
+                        disconnectReceiver();
+                    }
+                }
+            }, 1000);
+        }
+
+        function updateTimeoutDisplay() {
+            const minutes = Math.floor(app.timeoutSeconds / 60);
+            const seconds = app.timeoutSeconds % 60;
+            const timeString = `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+
+            if (app.isMobile) {
+                document.getElementById('timeoutCountdownSender').textContent = timeString;
+            } else {
+                document.getElementById('timeoutCountdownReceiver').textContent = timeString;
+            }
+        }
+
+        function resetTimeoutTimer() {
+            // Reset về 5 phút khi có hoạt động âm thanh ở phút thứ 59
+            if (app.timeoutSeconds <= 60) { // Nếu còn 1 phút hoặc ít hơn
+                app.timeoutSeconds = 300; // Reset về 5 phút
+                showStatus(app.isMobile ? 'sender' : 'receiver',
+                    '⏰ Đã reset thời gian kết nối về 5 phút', 'info');
+            }
+        }
+
+        function stopTimeoutTimer() {
+            if (app.timeoutInterval) {
+                clearInterval(app.timeoutInterval);
+                app.timeoutInterval = null;
+            }
+        }
+
+        // ========================================
+        // 🎤 KIỂM TRA HOẠT ĐỘNG ÂM THANH
+        // ========================================
+        function startAudioActivityCheck(stream) {
+            stopAudioActivityCheck();
+
+            const audioContext = new(window.AudioContext || window.webkitAudioContext)();
+            const source = audioContext.createMediaStreamSource(stream);
+            const analyser = audioContext.createAnalyser();
+            analyser.fftSize = 512;
+            source.connect(analyser);
+
+            const dataArray = new Float32Array(analyser.fftSize);
+
+            app.audioActivityCheckInterval = setInterval(() => {
+                analyser.getFloatTimeDomainData(dataArray);
+
+                // Tính RMS
+                let sum = 0;
+                for (let i = 0; i < dataArray.length; i++) {
+                    sum += dataArray[i] * dataArray[i];
+                }
+                const rms = Math.sqrt(sum / dataArray.length);
+
+                // Nếu có âm thanh (RMS > ngưỡng)
+                if (rms > 0.01) {
+                    app.lastAudioActivity = Date.now();
+                    resetTimeoutTimer();
+                }
+            }, 1000);
+        }
+
+        function stopAudioActivityCheck() {
+            if (app.audioActivityCheckInterval) {
+                clearInterval(app.audioActivityCheckInterval);
+                app.audioActivityCheckInterval = null;
+            }
+        }
+
+        // ========================================
+        // 🔐 QR CODE SYSTEM (Xoay mỗi 1 phút)
+        // ========================================
+        function generateRandomToken() {
+            return Math.random().toString(36).substring(2, 15) +
+                Math.random().toString(36).substring(2, 15);
+        }
+
+        function generateNewQRCode() {
+            if (app.peer && app.peer.id) {
+                app.currentToken = generateRandomToken();
+
+                const pageUrl = window.location.href.split('?')[0];
+                const connectUrl = `${pageUrl}?token=${app.currentToken}&peer=${app.peer.id}`;
+
+                const qrContainer = document.getElementById('qrcode-container');
+                qrContainer.innerHTML = '';
+
+                new QRCode(qrContainer, {
+                    text: connectUrl,
+                    width: 256,
+                    height: 256,
+                    colorDark: "#2d3748",
+                    colorLight: "#ffffff",
+                    correctLevel: QRCode.CorrectLevel.H
+                });
+
+                document.getElementById('qrTokenInfo').innerHTML =
+                    `🔐 Mã ID: ${app.currentToken.substring(0, 12)}...`;
+
+                // Reset bộ đếm thời gian QR
+                startQrTimer();
+
+                console.log("✅ Đã tạo QR Code mới:", app.currentToken);
+                return app.currentToken;
+            }
+            return null;
+        }
+
+        function startQrTimer() {
+            let seconds = 60;
+            const timerElement = document.getElementById('qrTimer');
+
+            function updateTimer() {
+                timerElement.textContent = `⏳ QR hết hạn sau: ${seconds}s`;
+                seconds--;
+
+                if (seconds < 0) {
+                    clearInterval(timerId);
+                    timerElement.textContent = '🔄 Đang tạo QR mới...';
+                }
+            }
+
+            updateTimer();
+            const timerId = setInterval(updateTimer, 1000);
+
+            // Lưu timer ID để clear khi cần
+            if (app.qrTimerId) clearInterval(app.qrTimerId);
+            app.qrTimerId = timerId;
+        }
+
+        function startQrRotation() {
+            stopQrRotation();
+
+            if (app.peer && app.peer.id) {
+                app.qrRotateInterval = setInterval(() => {
+                    const initView = document.getElementById('receiver-initial-view');
+                    if (initView && !initView.classList.contains('hidden')) {
+                        const newToken = generateNewQRCode();
+                        console.log('🔁 QR rotated:', newToken);
+                    }
+                }, 60 * 1000); // 1 phút
+            }
+        }
+
+        function stopQrRotation() {
+            if (app.qrRotateInterval) {
+                clearInterval(app.qrRotateInterval);
+                app.qrRotateInterval = null;
+            }
+            if (app.qrTimerId) {
+                clearInterval(app.qrTimerId);
+                app.qrTimerId = null;
+            }
         }
 
         // ========================================
         // 🚪 THOÁT ỨNG DỤNG KHI NGẮT KẾT NỐI
         // ========================================
         function exitAppOnDisconnect() {
-            console.log('🚪 Thoát ứng dụng khi ngắt kết nối');
-
             // Dọn dẹp tài nguyên
+            stopTimeoutTimer();
+            stopAudioActivityCheck();
+
             if (app.localStream) {
                 app.localStream.getTracks().forEach(track => track.stop());
                 app.localStream = null;
@@ -859,13 +1004,11 @@
 
             stopVisualizer();
 
-            // Hiển thị màn hình thoát
             showExitScreen();
 
-            // Thử đóng tab tự động sau 2 giây
             setTimeout(() => {
                 try {
-                    if (window.close && !window.closed) {
+                    if (window.close) {
                         window.close();
                     }
                 } catch (e) {
@@ -948,9 +1091,9 @@
             const style = document.createElement('style');
             style.textContent = `
                 @keyframes pulse {
-                    0% { transform: scale(1); opacity: 0.7; }
-                    50% { transform: scale(1.1); opacity: 1; }
-                    100% { transform: scale(1); opacity: 0.7; }
+                    0% { transform: scale(1); }
+                    50% { transform: scale(1.1); }
+                    100% { transform: scale(1); }
                 }
             `;
             document.head.appendChild(style);
@@ -989,7 +1132,7 @@
         }
 
         function disconnect() {
-            if (isMobile) {
+            if (app.isMobile) {
                 showStatus('sender', '🔄 Đang ngắt kết nối và thoát...', 'info');
                 exitAppOnDisconnect();
             } else {
@@ -1010,77 +1153,17 @@
         }
 
         function resetSenderUI() {
-            if (!isMobile) {
+            if (!app.isMobile) {
                 document.getElementById('sender-auto-view').classList.add('hidden');
                 document.getElementById('sender-connected-view').classList.add('hidden');
                 document.getElementById('sender-manual-view').classList.remove('hidden');
-
-                const senderStatus = document.getElementById('senderStatus');
-                if (senderStatus) {
-                    senderStatus.innerHTML = '';
-                    senderStatus.className = 'status';
-                }
+                document.getElementById('senderStatus').innerHTML = '';
 
                 const connectBtn = document.getElementById('connectBtn');
                 if (connectBtn) connectBtn.disabled = false;
 
                 stopVisualizer();
                 window.history.replaceState({}, document.title, window.location.pathname);
-            }
-        }
-
-        // ========================================
-        // 🔐 QR CODE SYSTEM
-        // ========================================
-        function generateRandomToken() {
-            return Math.random().toString(36).substring(2, 15) +
-                Math.random().toString(36).substring(2, 15);
-        }
-
-        function generateNewQRCode() {
-            if (app.peer && app.peer.id) {
-                app.currentToken = generateRandomToken();
-                const pageUrl = window.location.href.split('?')[0];
-                const connectUrl = `${pageUrl}?token=${app.currentToken}&peer=${app.peer.id}`;
-
-                const qrContainer = document.getElementById('qrcode-container');
-                qrContainer.innerHTML = '';
-
-                new QRCode(qrContainer, {
-                    text: connectUrl,
-                    width: 256,
-                    height: 256,
-                    colorDark: "#2d3748",
-                    colorLight: "#ffffff",
-                    correctLevel: QRCode.CorrectLevel.H
-                });
-
-                document.getElementById('receiverTokenInfo').innerHTML =
-                    `🔐 Mã ID: ${app.currentToken.substring(0, 12)}...`;
-
-                console.log("✅ Đã tạo QR Code mới, Token:", app.currentToken.substring(0, 8) + '...');
-                return app.currentToken;
-            }
-            return null;
-        }
-
-        function startQrRotation() {
-            stopQrRotation();
-            if (app.peer && app.peer.id) {
-                app.qrRotateInterval = setInterval(() => {
-                    const initView = document.getElementById('receiver-initial-view');
-                    if (initView && !initView.classList.contains('hidden')) {
-                        const newToken = generateNewQRCode();
-                        console.log('🔁 QR rotated:', newToken.substring(0, 8) + '...');
-                    }
-                }, 60 * 1000);
-            }
-        }
-
-        function stopQrRotation() {
-            if (app.qrRotateInterval) {
-                clearInterval(app.qrRotateInterval);
-                app.qrRotateInterval = null;
             }
         }
 
@@ -1114,8 +1197,9 @@
         // 📷 QR SCANNER (Điện thoại)
         // ========================================
         function initializeQRScanner() {
-            console.log('📷 Khởi tạo QR scanner');
             app.qrVideo = document.getElementById('qr-video');
+            app.qrCanvas = document.getElementById('qr-canvas');
+            app.qrCanvasContext = app.qrCanvas.getContext('2d');
             document.getElementById('startScannerBtn').onclick = startQRScanner;
             document.getElementById('stopScannerBtn').onclick = stopQRScanner;
         }
@@ -1134,94 +1218,20 @@
                         }
                     }
                 });
-
                 app.qrVideo.srcObject = stream;
-                await app.qrVideo.play();
-
+                app.qrVideo.play();
                 document.getElementById('scanner-container').classList.remove('hidden');
                 document.getElementById('startScannerBtn').classList.add('hidden');
                 document.getElementById('stopScannerBtn').classList.remove('hidden');
                 document.getElementById('scanner-info').textContent = 'Đang quét QR code...';
                 showStatus('sender', '📷 Đang quét QR code...', 'info');
-
-                startQRScanning();
+                requestAnimationFrame(scanQRCode);
             } catch (error) {
-                console.error('❌ Lỗi camera:', error);
                 let message = 'Lỗi không xác định';
                 if (error.name === 'NotAllowedError') message = '❌ Quyền truy cập camera bị từ chối. Vui lòng cho phép camera để quét QR code.';
                 else if (error.name === 'NotFoundError') message = '❌ Không tìm thấy camera.';
                 else message = `❌ Lỗi: ${error.message}`;
                 showStatus('sender', message, 'error');
-            }
-        }
-
-        function startQRScanning() {
-            const canvas = document.createElement('canvas');
-            const context = canvas.getContext('2d');
-
-            function scan() {
-                if (!app.qrVideo || !app.qrVideo.srcObject) return;
-
-                if (app.qrVideo.readyState === app.qrVideo.HAVE_ENOUGH_DATA) {
-                    canvas.width = app.qrVideo.videoWidth;
-                    canvas.height = app.qrVideo.videoHeight;
-                    context.drawImage(app.qrVideo, 0, 0, canvas.width, canvas.height);
-
-                    try {
-                        const imageData = context.getImageData(0, 0, canvas.width, canvas.height);
-                        const code = jsQR(imageData.data, imageData.width, imageData.height, {
-                            inversionAttempts: 'dontInvert'
-                        });
-
-                        if (code) {
-                            console.log('✅ Phát hiện QR code:', code.data.substring(0, 50) + '...');
-                            handleQRCodeDetected(code.data);
-                            return;
-                        }
-                    } catch (e) {
-                        console.log('QR scan error:', e);
-                    }
-                }
-                requestAnimationFrame(scan);
-            }
-
-            scan();
-        }
-
-        function handleQRCodeDetected(url) {
-            try {
-                console.log('🔗 QR Code URL:', url);
-                const urlObj = new URL(url);
-                const token = urlObj.searchParams.get('token');
-                const peer = urlObj.searchParams.get('peer');
-
-                if (token && peer) {
-                    stopQRScanner();
-
-                    // Cập nhật URL với token và peer ID
-                    const newUrl = `${window.location.pathname}?token=${token}&peer=${peer}`;
-                    window.history.pushState({}, '', newUrl);
-
-                    // Tải lại view sender với thông tin mới
-                    app.currentToken = token;
-                    document.getElementById('sender-manual-view').classList.add('hidden');
-                    document.getElementById('sender-auto-view').classList.remove('hidden');
-                    document.getElementById('senderTokenInfo').textContent = `Token: ${token.substring(0, 8)}...`;
-
-                    const connectBtn = document.getElementById('connectBtn');
-                    connectBtn.disabled = false;
-                    connectBtn.onclick = () => {
-                        connectBtn.disabled = true;
-                        connectToReceiver(peer, token);
-                    };
-
-                    showStatus('sender', '✅ Đã quét QR code thành công!', 'connected');
-                } else {
-                    showStatus('sender', '❌ QR code không hợp lệ', 'error');
-                }
-            } catch (e) {
-                console.error('❌ Lỗi xử lý QR code:', e);
-                showStatus('sender', '❌ Không thể đọc QR code', 'error');
             }
         }
 
@@ -1237,69 +1247,69 @@
             showStatus('sender', 'Đã dừng quét QR code', 'info');
         }
 
-        // ========================================
-        // 📊 AUDIO VISUALIZER FUNCTIONS
-        // ========================================
-        function clearVisualizerCanvas(canvasId) {
-            const canvas = document.getElementById(canvasId);
-            if (canvas) {
-                const ctx = canvas.getContext('2d');
-                ctx.fillStyle = '#f7fafc';
-                ctx.fillRect(0, 0, canvas.width, canvas.height);
+        function scanQRCode() {
+            if (!app.qrVideo || !app.qrVideo.srcObject) return;
+            if (app.qrVideo.readyState === app.qrVideo.HAVE_ENOUGH_DATA) {
+                app.qrCanvas.height = app.qrVideo.videoHeight;
+                app.qrCanvas.width = app.qrVideo.videoWidth;
+                app.qrCanvasContext.drawImage(app.qrVideo, 0, 0, app.qrCanvas.width, app.qrCanvas.height);
+                try {
+                    const imageData = app.qrCanvasContext.getImageData(0, 0, app.qrCanvas.width, app.qrCanvas.height);
+                    const code = jsQR(imageData.data, imageData.width, imageData.height, {
+                        inversionAttempts: 'dontInvert'
+                    });
+                    if (code) {
+                        handleQRCodeDetected(code.data);
+                        return;
+                    }
+                } catch (e) {
+                    console.log('QR scan error:', e);
+                }
+            }
+            requestAnimationFrame(scanQRCode);
+        }
+
+        function handleQRCodeDetected(qrData) {
+            try {
+                const url = new URL(qrData);
+                const token = url.searchParams.get('token');
+                const peer = url.searchParams.get('peer');
+
+                if (token && peer) {
+                    stopQRScanner();
+                    window.location.search = `?token=${token}&peer=${peer}`;
+                }
+            } catch (e) {
+                showStatus('sender', '❌ QR code không hợp lệ', 'error');
             }
         }
 
+        // ========================================
+        // 📊 AUDIO VISUALIZER
+        // ========================================
         function startVisualizer() {
-            console.log('🎨 Bắt đầu visualizer sender');
+            if (!app.localStream || !app.localStream.active) return;
 
-            if (!app.localStream || !app.localStream.active) {
-                console.log('⚠️ Không thể bật visualizer: stream không khả dụng');
-                return;
-            }
-
-            // Kiểm tra micro có bật không
-            const audioTracks = app.localStream.getAudioTracks();
-            if (audioTracks.length === 0 || !audioTracks[0].enabled) {
-                console.log('⚠️ Micro chưa bật');
-                return;
-            }
-
-            // Dừng visualizer cũ nếu có
-            stopVisualizer();
-
-            try {
+            if (!app.audioContext) {
                 app.audioContext = new(window.AudioContext || window.webkitAudioContext)();
+            }
+            if (!app.analyser) {
                 app.analyser = app.audioContext.createAnalyser();
                 const source = app.audioContext.createMediaStreamSource(app.localStream);
                 source.connect(app.analyser);
-            } catch (e) {
-                console.error('❌ Không thể tạo AudioContext:', e);
-                return;
             }
 
             app.analyser.fftSize = 256;
             const bufferLength = app.analyser.frequencyBinCount;
             const dataArray = new Uint8Array(bufferLength);
             const canvas = document.getElementById('visualizer');
-
-            if (!canvas) {
-                console.error('❌ Không tìm thấy canvas visualizer');
-                return;
-            }
-
             const canvasCtx = canvas.getContext('2d');
+
             canvas.width = canvas.offsetWidth;
             canvas.height = canvas.offsetHeight;
 
-            // Xóa canvas
-            canvasCtx.fillStyle = '#f7fafc';
-            canvasCtx.fillRect(0, 0, canvas.width, canvas.height);
-
-            let silentFrames = 0;
-            const SILENT_THRESHOLD = 10;
-
             function draw() {
-                if (!app.localStream || !app.localStream.active || !app.analyser) {
+                if (!app.localStream || !app.localStream.getAudioTracks()[0].enabled) {
                     stopVisualizer();
                     return;
                 }
@@ -1307,281 +1317,180 @@
                 app.visualizerFrameId = requestAnimationFrame(draw);
                 app.analyser.getByteFrequencyData(dataArray);
 
-                // Tính mức độ âm thanh
-                let sum = 0;
-                for (let i = 0; i < bufferLength; i++) {
-                    sum += dataArray[i];
-                }
-                const average = sum / bufferLength;
-
-                // Xóa canvas
                 canvasCtx.fillStyle = '#f7fafc';
                 canvasCtx.fillRect(0, 0, canvas.width, canvas.height);
 
-                // Phát hiện im lặng
-                if (average < 5) { // Ngưỡng rất thấp cho im lặng
-                    silentFrames++;
-                    if (silentFrames > SILENT_THRESHOLD) {
-                        // Vẽ thanh tĩnh khi im lặng lâu
-                        drawSilentBars(canvasCtx, canvas.width, canvas.height, bufferLength);
-                        return;
-                    }
-                } else {
-                    silentFrames = 0;
-                }
+                let barWidth = (canvas.width / bufferLength) * 2.5;
+                let barHeight;
+                let x = 0;
 
-                // Vẽ thanh âm thanh bình thường
-                drawAudioBars(canvasCtx, canvas.width, canvas.height, bufferLength, dataArray);
-            }
-
-            draw();
-            app.isVisualizerActive = true;
-            console.log('✅ Visualizer sender đã bật');
-        }
-
-        function drawSilentBars(ctx, width, height, bufferLength) {
-            const barWidth = (width / bufferLength) * 2.5;
-            let x = 0;
-
-            for (let i = 0; i < bufferLength; i += 3) { // Vẽ thưa hơn
-                const barHeight = 2 + Math.random() * 3; // Rất nhỏ
-                const gradient = ctx.createLinearGradient(0, height - barHeight, 0, height);
-                gradient.addColorStop(0, '#e2e8f0');
-                gradient.addColorStop(1, '#cbd5e0');
-
-                ctx.fillStyle = gradient;
-                ctx.fillRect(x, height - barHeight, barWidth, barHeight);
-                x += barWidth + 1;
-            }
-        }
-
-        function drawAudioBars(ctx, width, height, bufferLength, dataArray) {
-            const barWidth = (width / bufferLength) * 2.5;
-            let x = 0;
-
-            for (let i = 0; i < bufferLength; i++) {
-                const barHeight = (dataArray[i] / 255) * height;
-                const gradient = ctx.createLinearGradient(0, height - barHeight, 0, height);
-
-                // Màu sắc dựa trên cường độ âm thanh
-                if (barHeight > height * 0.7) {
-                    gradient.addColorStop(0, '#e53e3e'); // Đỏ khi to
-                    gradient.addColorStop(1, '#c53030');
-                } else if (barHeight > height * 0.4) {
-                    gradient.addColorStop(0, '#d69e2e'); // Vàng khi trung bình
-                    gradient.addColorStop(1, '#b7791f');
-                } else {
-                    gradient.addColorStop(0, '#667eea'); // Xanh khi nhỏ
+                for (let i = 0; i < bufferLength; i++) {
+                    barHeight = (dataArray[i] / 255) * canvas.height;
+                    const gradient = canvasCtx.createLinearGradient(0, canvas.height - barHeight, 0, canvas.height);
+                    gradient.addColorStop(0, '#667eea');
                     gradient.addColorStop(1, '#764ba2');
-                }
 
-                ctx.fillStyle = gradient;
-                ctx.fillRect(x, height - barHeight, barWidth, barHeight);
-                x += barWidth + 1;
+                    canvasCtx.fillStyle = gradient;
+                    canvasCtx.fillRect(x, canvas.height - barHeight, barWidth, barHeight);
+                    x += barWidth + 1;
+                }
             }
+            draw();
         }
 
         function stopVisualizer() {
-            console.log('🛑 Dừng visualizer sender');
-
             if (app.visualizerFrameId) {
                 cancelAnimationFrame(app.visualizerFrameId);
                 app.visualizerFrameId = null;
             }
-
-            clearVisualizerCanvas('visualizer');
-
-            if (app.audioContext) {
-                try {
-                    app.audioContext.close();
-                } catch (e) {}
-                app.audioContext = null;
+            const canvas = document.getElementById('visualizer');
+            if (canvas) {
+                const canvasCtx = canvas.getContext('2d');
+                canvasCtx.fillStyle = '#f7fafc';
+                canvasCtx.fillRect(0, 0, canvas.width, canvas.height);
             }
-
-            app.analyser = null;
-            app.isVisualizerActive = false;
         }
 
         function startRemoteVisualizer(remoteStream) {
-            console.log('🎨 Bắt đầu remote visualizer');
+            if (!remoteStream) return;
 
-            if (!remoteStream || !remoteStream.active) {
-                console.log('⚠️ Remote stream không khả dụng');
-                return;
+            if (!app.remoteAudioContext) {
+                app.remoteAudioContext = new(window.AudioContext || window.webkitAudioContext)();
             }
 
-            // Dừng visualizer cũ
-            stopRemoteVisualizer();
+            if (app.remoteAnalyser) {
+                try {
+                    app.remoteAnalyser.disconnect();
+                } catch (e) {}
+                app.remoteAnalyser = null;
+            }
+
+            app.remoteAnalyser = app.remoteAudioContext.createAnalyser();
+            app.remoteAnalyser.fftSize = 256;
 
             try {
-                app.remoteAudioContext = new(window.AudioContext || window.webkitAudioContext)();
-                app.remoteAnalyser = app.remoteAudioContext.createAnalyser();
-                app.remoteAnalyser.fftSize = 256;
-
                 const source = app.remoteAudioContext.createMediaStreamSource(remoteStream);
                 source.connect(app.remoteAnalyser);
             } catch (e) {
-                console.error('❌ Không thể tạo remote AudioContext:', e);
+                console.error('Không thể tạo MediaStreamSource cho remote visualizer', e);
                 return;
             }
 
             const bufferLength = app.remoteAnalyser.frequencyBinCount;
             const dataArray = new Uint8Array(bufferLength);
             const canvas = document.getElementById('visualizer-receiver');
-
-            if (!canvas) {
-                console.error('❌ Không tìm thấy canvas remote visualizer');
-                return;
-            }
-
+            if (!canvas) return;
             const canvasCtx = canvas.getContext('2d');
+
             canvas.width = canvas.offsetWidth;
             canvas.height = canvas.offsetHeight;
 
-            // Xóa canvas
-            canvasCtx.fillStyle = '#f7fafc';
-            canvasCtx.fillRect(0, 0, canvas.width, canvas.height);
-
-            let silentFrames = 0;
-            const SILENT_THRESHOLD = 10;
-
             function drawRemote() {
-                if (!remoteStream || !remoteStream.active || !app.remoteAnalyser) {
-                    stopRemoteVisualizer();
-                    return;
-                }
-
                 app.remoteVisualizerFrameId = requestAnimationFrame(drawRemote);
                 app.remoteAnalyser.getByteFrequencyData(dataArray);
 
-                // Tính mức độ âm thanh
-                let sum = 0;
-                for (let i = 0; i < bufferLength; i++) {
-                    sum += dataArray[i];
-                }
-                const average = sum / bufferLength;
-
-                // Xóa canvas
                 canvasCtx.fillStyle = '#f7fafc';
                 canvasCtx.fillRect(0, 0, canvas.width, canvas.height);
 
-                // Phát hiện im lặng
-                if (average < 5) {
-                    silentFrames++;
-                    if (silentFrames > SILENT_THRESHOLD) {
-                        drawSilentBars(canvasCtx, canvas.width, canvas.height, bufferLength);
-                        return;
-                    }
-                } else {
-                    silentFrames = 0;
-                }
+                let barWidth = (canvas.width / bufferLength) * 2.5;
+                let barHeight;
+                let x = 0;
 
-                // Vẽ thanh âm thanh
-                drawAudioBars(canvasCtx, canvas.width, canvas.height, bufferLength, dataArray);
+                for (let i = 0; i < bufferLength; i++) {
+                    barHeight = (dataArray[i] / 255) * canvas.height;
+                    const gradient = canvasCtx.createLinearGradient(0, canvas.height - barHeight, 0, canvas.height);
+                    gradient.addColorStop(0, '#667eea');
+                    gradient.addColorStop(1, '#764ba2');
+
+                    canvasCtx.fillStyle = gradient;
+                    canvasCtx.fillRect(x, canvas.height - barHeight, barWidth, barHeight);
+                    x += barWidth + 1;
+                }
             }
 
             drawRemote();
-            app.isRemoteVisualizerActive = true;
-            console.log('✅ Remote visualizer đã bật');
         }
 
         function stopRemoteVisualizer() {
-            console.log('🛑 Dừng remote visualizer');
-
             if (app.remoteVisualizerFrameId) {
                 cancelAnimationFrame(app.remoteVisualizerFrameId);
                 app.remoteVisualizerFrameId = null;
             }
-
-            clearVisualizerCanvas('visualizer-receiver');
-
-            if (app.remoteAudioContext) {
-                try {
-                    app.remoteAudioContext.close();
-                } catch (e) {}
-                app.remoteAudioContext = null;
+            const canvas = document.getElementById('visualizer-receiver');
+            if (canvas) {
+                const canvasCtx = canvas.getContext('2d');
+                canvasCtx.fillStyle = '#f7fafc';
+                canvasCtx.fillRect(0, 0, canvas.width, canvas.height);
             }
-
-            app.remoteAnalyser = null;
-            app.isRemoteVisualizerActive = false;
+            if (app.remoteAnalyser) {
+                try {
+                    app.remoteAnalyser.disconnect();
+                } catch (e) {}
+                app.remoteAnalyser = null;
+            }
         }
 
-        // ========================================
-        // 🔊 AUDIO ACTIVITY DETECTION
-        // ========================================
-        async function checkAudioActivity(stream, threshold = 0.01, checkDuration = 500) {
+        function waitForAudioActivity(stream, threshold = 0.02, requiredMs = 150, maxWait = 3000) {
             return new Promise((resolve) => {
-                if (!stream || !stream.active) {
-                    resolve(false);
-                    return;
-                }
+                if (!stream) return resolve(false);
 
-                let audioContext = null;
-                let analyser = null;
-                let source = null;
-
+                const audioCtx = new(window.AudioContext || window.webkitAudioContext)();
+                let source;
                 try {
-                    audioContext = new(window.AudioContext || window.webkitAudioContext)();
-                    analyser = audioContext.createAnalyser();
-                    analyser.fftSize = 512;
-                    source = audioContext.createMediaStreamSource(stream);
-                    source.connect(analyser);
+                    source = audioCtx.createMediaStreamSource(stream);
                 } catch (e) {
-                    console.error('❌ Lỗi tạo audio context cho kiểm tra:', e);
-                    if (audioContext) audioContext.close();
                     resolve(false);
                     return;
                 }
 
-                const dataArray = new Float32Array(analyser.fftSize);
-                let hasAudio = false;
+                const analyser = audioCtx.createAnalyser();
+                analyser.fftSize = 512;
+                source.connect(analyser);
+                const data = new Float32Array(analyser.fftSize);
+
+                let aboveSince = null;
                 const startTime = Date.now();
 
                 function check() {
-                    if (Date.now() - startTime > checkDuration) {
-                        cleanup();
-                        resolve(hasAudio);
-                        return;
-                    }
-
-                    analyser.getFloatTimeDomainData(dataArray);
-
-                    // Tính RMS
+                    analyser.getFloatTimeDomainData(data);
                     let sum = 0;
-                    for (let i = 0; i < dataArray.length; i++) {
-                        sum += dataArray[i] * dataArray[i];
-                    }
-                    const rms = Math.sqrt(sum / dataArray.length);
+                    for (let i = 0; i < data.length; i++) sum += data[i] * data[i];
+                    const rms = Math.sqrt(sum / data.length);
 
-                    if (rms > threshold) {
-                        hasAudio = true;
+                    if (rms >= threshold) {
+                        if (aboveSince === null) aboveSince = Date.now();
+                        else if (Date.now() - aboveSince >= requiredMs) {
+                            cleanup();
+                            resolve(true);
+                            return;
+                        }
+                    } else {
+                        aboveSince = null;
+                    }
+
+                    if (Date.now() - startTime > maxWait) {
                         cleanup();
-                        resolve(true);
+                        resolve(false);
                         return;
                     }
 
-                    requestAnimationFrame(check);
+                    rafId = requestAnimationFrame(check);
                 }
+
+                let rafId = requestAnimationFrame(check);
 
                 function cleanup() {
-                    if (analyser) {
-                        try {
-                            analyser.disconnect();
-                        } catch (e) {}
-                    }
-                    if (source) {
-                        try {
-                            source.disconnect();
-                        } catch (e) {}
-                    }
-                    if (audioContext) {
-                        try {
-                            audioContext.close();
-                        } catch (e) {}
-                    }
+                    if (rafId) cancelAnimationFrame(rafId);
+                    try {
+                        analyser.disconnect();
+                    } catch (e) {}
+                    try {
+                        source.disconnect();
+                    } catch (e) {}
+                    try {
+                        audioCtx.close();
+                    } catch (e) {}
                 }
-
-                check();
             });
         }
     </script>
