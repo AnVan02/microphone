@@ -1,0 +1,178 @@
+
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🎙️ Mic Qua Mạng - Auto Port</title>
+    <script src="https://unpkg.com/peerjs@1.4.7/dist/peerjs.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/gh/davidshimjs/qrcodejs/qrcode.min.js"></script>
+    <style>
+        body {
+            background: linear-gradient(135deg, #2b5876 0%, #4e4376 100%);
+            min-height: 100vh;
+            padding: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-family: system-ui, sans-serif;
+        }
+        .container {
+            background: white;
+            border-radius: 15px;
+            padding: 30px;
+            max-width: 500px;
+            width: 100%;
+            text-align: center;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+        }
+        h1 { color: #2d3748; margin-bottom: 20px; }
+        .info {
+            background: #ebf8ff;
+            color: #2a4365;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 15px 0;
+            text-align: left;
+            border-left: 4px solid #4299e1;
+        }
+        .btn {
+            width: 100%;
+            padding: 15px;
+            border: none;
+            border-radius: 10px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            margin: 10px 0;
+            transition: all 0.3s;
+        }
+        .btn-primary { background: #667eea; color: white; }
+        .btn-danger { background: #e53e3e; color: white; }
+        .btn:hover { opacity: 0.9; transform: translateY(-2px); }
+        .hidden { display: none; }
+        #qrcode-container {
+            padding: 20px;
+            border: 2px dashed #e2e8f0;
+            border-radius: 8px;
+            margin: 20px 0;
+            min-height: 290px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🎙️ Mic Qua Mạng</h1>
+        
+        <div id="receiverDiv">
+            <div id="receiver-initial-view">
+                <div class="info">
+                    <strong>Server đang chạy trên port: 8765</strong><br>
+                    Quét mã QR bằng điện thoại để kết nối.
+                </div>
+                
+                <div id="qrcode-container">
+                    <p>Đang tạo mã QR...</p>
+                </div>
+                
+                <div class="info">
+                    <strong>⚠️ Lưu ý:</strong> Chỉ 1 người kết nối tại 1 thời điểm.
+                </div>
+                
+                <button class="btn btn-danger" onclick="disconnectReceiver()">
+                    🔴 Dừng Server
+                </button>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        const app = {
+            peer: null,
+            currentCall: null,
+            ws: null,
+            currentToken: null
+        };
+        
+        const PEER_CONFIG = {
+            host: '0.peerjs.com',
+            port: 443,
+            secure: true,
+            path: '/'
+        };
+        
+        // Kết nối WebSocket với port đúng
+        const WS_PORT = 8765;
+        
+        document.addEventListener('DOMContentLoaded', () => {
+            initializeReceiver();
+        });
+        
+        function initializeReceiver() {
+            app.peer = new Peer(PEER_CONFIG);
+            
+            app.peer.on('open', id => {
+                console.log("✅ PeerJS ID:", id);
+                generateNewQRCode(id);
+            });
+            
+            app.peer.on('call', call => {
+                if (app.currentCall && app.currentCall.open) {
+                    console.log("⛔ Từ chối cuộc gọi - đang bận");
+                    call.close();
+                    return;
+                }
+                
+                app.currentCall = call;
+                call.answer();
+                
+                call.on('stream', remoteStream => {
+                    console.log("✅ Nhận được audio stream");
+                    connectWebSocket(remoteStream);
+                });
+            });
+        }
+        
+        function generateNewQRCode(peerId) {
+            const pageUrl = window.location.href.split('?')[0];
+            const connectUrl = `${pageUrl}?token=${generateRandomToken()}&peer=${peerId}`;
+            
+            const qrContainer = document.getElementById('qrcode-container');
+            qrContainer.innerHTML = '';
+            
+            new QRCode(qrContainer, {
+                text: connectUrl,
+                width: 256,
+                height: 256,
+                colorDark: "#2d3748",
+                colorLight: "#ffffff"
+            });
+        }
+        
+        function generateRandomToken() {
+            return Math.random().toString(36).substring(2, 15) +
+                   Math.random().toString(36).substring(2, 15);
+        }
+        
+        function connectWebSocket(remoteStream) {
+            // Kết nối WebSocket với port đúng
+            app.ws = new WebSocket(`ws://localhost:${WS_PORT}`);
+            app.ws.binaryType = "arraybuffer";
+            
+            app.ws.onopen = () => {
+                console.log("✅ WebSocket connected on port", WS_PORT);
+            };
+        }
+        
+        function disconnectReceiver() {
+            if (app.currentCall) app.currentCall.close();
+            if (app.ws) app.ws.close();
+            if (app.peer) app.peer.destroy();
+            window.close();
+        }
+    </script>
+</body>
+</html>

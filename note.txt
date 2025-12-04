@@ -1,0 +1,11 @@
+ Micro qua mạng - Biến điện thoại thành micro không dây
+
+🔒 Chỉ 1 kết nối - Từ chối người dùng thứ 2
+
+🗣️ Speech-to-Text - Tự động chuyển giọng nói thành văn bản
+
+🔄 QR tự động làm mới - Mỗi 1 phút hoặc sau khi kết nối
+
+📱 Thông báo rõ ràng cho điện thoại thứ 2
+
+⏱️ Timeout tự động - 5 phút kết nối, 3 phút không hoạt động
